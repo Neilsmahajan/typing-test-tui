@@ -17,9 +17,7 @@ var quoteCmd = &cobra.Command{
 	Short: "Get a random quote",
 	Long:  `Get a random quote`,
 	Run: func(cmd *cobra.Command, args []string) {
-		p := tea.NewProgram(quote_input.Model{
-			Target: "The quick brown fox jumps over the lazy dog.",
-		})
+		p := tea.NewProgram(quote_input.InitialModel("The quick brown fox jumps over the lazy dog."))
 		if _, err := p.Run(); err != nil {
 			fmt.Println("Error running program:", err)
 		}

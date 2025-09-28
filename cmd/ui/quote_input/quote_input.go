@@ -22,6 +22,12 @@ type Model struct {
 	wpm      float64
 }
 
+func InitialModel(target string) Model {
+	return Model{
+		Target: target,
+	}
+}
+
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
