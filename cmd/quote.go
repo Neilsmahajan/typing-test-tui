@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"log"
+	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/neilsmahajan/typing-test-tui/cmd/ui/quote_input"
@@ -17,9 +17,11 @@ var quoteCmd = &cobra.Command{
 	Short: "Get a random quote",
 	Long:  `Get a random quote`,
 	Run: func(cmd *cobra.Command, args []string) {
-		tprogram := tea.NewProgram(quote_input.InitialQuoteModel())
-		if _, err := tprogram.Run(); err != nil {
-			log.Fatal(err)
+		p := tea.NewProgram(quote_input.Model{
+			Target: "The quick brown fox jumps over the lazy dog.",
+		})
+		if _, err := p.Run(); err != nil {
+			fmt.Println("Error running program:", err)
 		}
 	},
 }
