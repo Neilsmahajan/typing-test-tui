@@ -13,7 +13,7 @@ type Model struct {
 	// Target text
 	Target string
 	// what user has typed so far
-	typed string
+	typed textinput.Model
 	// timing
 	started  bool
 	start    time.Time
@@ -23,8 +23,15 @@ type Model struct {
 }
 
 func InitialModel(target string) Model {
+	ti := textinput.New()
+	ti.Placeholder = target
+	ti.Focus()
+	ti.CharLimit = 156
+	ti.Width = 156
+
 	return Model{
 		Target: target,
+		typed:  ti,
 	}
 }
 
@@ -45,8 +52,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEsc, tea.KeyCtrlC:
 			return m, tea.Quit
 		case tea.KeyBackspace:
-			if len(m.typed) > 0 {
-				m.typed = m.typed[:len(m.typed)-1]
+			if len(m.typed.Value()) > 0 {
+				m.typed.SetValue(m.typed.Value()[:len(m.typed.Value())-1])
 			}
 		default:
 			// start timer on first key
@@ -56,12 +63,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// store typed chars
 			if len(msg.String()) == 1 {
-				m.typed += msg.String()
+				m.typed.SetValue(m.typed.Value() + msg.String())
 			}
 		}
 
 		// check if completed (capture finish time & wpm only once)
-		if !m.finished && m.typed == m.Target {
+		if !m.finished && m.typed.Value() == m.Target {
 			m.finished = true
 			m.end = time.Now()
 			elapsedMinutes := m.end.Sub(m.start).Minutes()
@@ -82,7 +89,7 @@ func (m Model) View() string {
 	b.WriteString(m.Target + "\n\n")
 
 	// highlight typed portion
-	b.WriteString("You typed: " + m.typed + "\n\n")
+	b.WriteString("You typed: " + m.typed.View() + "\n\n")
 
 	if m.finished {
 		b.WriteString(fmt.Sprintf("✅ Done! WPM: %.2f\n", m.wpm))
