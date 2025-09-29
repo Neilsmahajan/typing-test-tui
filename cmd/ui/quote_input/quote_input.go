@@ -52,10 +52,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyEsc, tea.KeyCtrlC:
 			return m, tea.Quit
-		case tea.KeyBackspace:
-			if len(m.typed.Value()) > 0 {
-				m.typed.SetValue(m.typed.Value()[:len(m.typed.Value())-1])
-			}
 		default:
 			// start timer on first key
 			if !m.started && len(msg.String()) == 1 {
