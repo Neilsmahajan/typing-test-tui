@@ -20,6 +20,7 @@ type Model struct {
 	finished bool
 	end      time.Time
 	wpm      float64
+	err      error
 }
 
 func InitialModel(target string) Model {
@@ -70,6 +71,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.wpm = float64(len(strings.Fields(m.Target))) / elapsedMinutes
 			}
 		}
+	case error:
+		m.err = msg
+		return m, nil
 	}
 
 	return m, cmd
