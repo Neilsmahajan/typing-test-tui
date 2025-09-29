@@ -62,18 +62,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.typed, cmd = m.typed.Update(msg)
 		}
 
-		// check if completed (capture finish time & wpm only once)
-		if !m.finished && m.typed.Value() == m.Target {
-			m.finished = true
-			m.end = time.Now()
-			elapsedMinutes := m.end.Sub(m.start).Minutes()
-			if elapsedMinutes > 0 {
-				m.wpm = float64(len(strings.Fields(m.Target))) / elapsedMinutes
-			}
-		}
 	case error:
 		m.err = msg
 		return m, nil
+	}
+
+	// check if completed (capture finish time & wpm only once)
+	if !m.finished && m.typed.Value() == m.Target {
+		m.finished = true
+		m.end = time.Now()
+		elapsedMinutes := m.end.Sub(m.start).Minutes()
+		if elapsedMinutes > 0 {
+			m.wpm = float64(len(strings.Fields(m.Target))) / elapsedMinutes
+		}
 	}
 
 	return m, cmd
