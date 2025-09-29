@@ -41,8 +41,9 @@ func (m Model) Init() tea.Cmd {
 
 // Update handles messages (key presses, etc.)
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
+	var cmd tea.Cmd
 
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if m.finished {
 			return m, tea.Quit
@@ -61,10 +62,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.started = true
 				m.start = time.Now()
 			}
-			// store typed chars
-			if len(msg.String()) == 1 {
-				m.typed.SetValue(m.typed.Value() + msg.String())
-			}
+			m.typed, cmd = m.typed.Update(msg)
 		}
 
 		// check if completed (capture finish time & wpm only once)
@@ -78,7 +76,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	return m, nil
+	return m, cmd
 }
 
 // View defines UI rendering
