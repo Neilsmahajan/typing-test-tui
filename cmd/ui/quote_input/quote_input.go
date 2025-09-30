@@ -95,8 +95,17 @@ func (m Model) View() string {
 	b.WriteString("\nType the following:\n\n")
 	b.WriteString(m.Target + "\n\n")
 
-	// highlight currentText portion
-	b.WriteString(m.currentText.View() + "\n\n")
+	typed := m.currentText.Value()
+	if len(typed) > len(m.Target) {
+		typed = m.Target
+	}
+	remaining := ""
+	if len(typed) < len(m.Target) {
+		remaining = m.Target[len(typed):]
+	}
+
+	fullLine := typed + remaining
+	b.WriteString(renderBox(fullLine, len(m.Target)) + "\n\n")
 
 	if m.finished {
 		b.WriteString(fmt.Sprintf("✅ Done! WPM: %.2f\n", m.wpm))
@@ -104,4 +113,16 @@ func (m Model) View() string {
 	}
 
 	return b.String()
+}
+
+func renderBox(content string, width int) string {
+	top := "+" + strings.Repeat("-", width) + "+\n"
+	if len(content) > width {
+		content = content[:width]
+	} else if len(content) < width {
+		content += strings.Repeat(" ", width-len(content))
+	}
+	middle := "|" + content + "|\n"
+	bottom := "+" + strings.Repeat("-", width) + "+\n"
+	return top + middle + bottom
 }
