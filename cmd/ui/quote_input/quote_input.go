@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -13,7 +14,7 @@ type Model struct {
 	// Target text
 	Target string
 	// what user has typed so far
-	typed textinput.Model
+	typed textarea.Model
 	// timing
 	started  bool
 	start    time.Time
@@ -24,15 +25,14 @@ type Model struct {
 }
 
 func InitialModel(target string) Model {
-	ti := textinput.New()
+	ti := textarea.New()
 	ti.Placeholder = target
 	ti.Focus()
-	ti.CharLimit = 156
-	ti.Width = 156
 
 	return Model{
 		Target: target,
 		typed:  ti,
+		err:    nil,
 	}
 }
 
@@ -42,6 +42,7 @@ func (m Model) Init() tea.Cmd {
 
 // Update handles messages (key presses, etc.)
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -51,7 +52,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.Type {
-		case tea.KeyEsc, tea.KeyCtrlC:
+		case tea.KeyEsc:
+			if m.typed.Focused() {
+				m.typed.Blur()
+			}
+		case tea.KeyCtrlC:
 			return m, tea.Quit
 		default:
 			// start timer on first key
@@ -59,7 +64,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.started = true
 				m.start = time.Now()
 			}
-			m.typed, cmd = m.typed.Update(msg)
+			if !m.typed.Focused() {
+				m.typed.Focus()
+			}
+			//m.typed, cmd = m.typed.Update(msg)
 		}
 
 	case error:
@@ -77,6 +85,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	m.typed, cmd = m.typed.Update(msg)
+	cmds = append(cmds, cmd)
+	cmd = tea.Batch(cmds...)
+
 	return m, cmd
 }
 
@@ -88,7 +100,7 @@ func (m Model) View() string {
 	b.WriteString(m.Target + "\n\n")
 
 	// highlight typed portion
-	b.WriteString("You typed: " + m.typed.View() + "\n\n")
+	b.WriteString(m.typed.View() + "\n\n")
 
 	if m.finished {
 		b.WriteString(fmt.Sprintf("✅ Done! WPM: %.2f\n", m.wpm))
