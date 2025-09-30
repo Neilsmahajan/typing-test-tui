@@ -13,6 +13,9 @@ import (
 var (
 	typedStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
 	remainingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	borderStyle    = lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("63"))
 )
 
 type Model struct {
@@ -120,11 +123,6 @@ func (m Model) View() string {
 func renderBox(typed string, remaining string, width int) string {
 	top := "+" + strings.Repeat("-", width) + "+\n"
 	complete := typedStyle.Render(typed) + remainingStyle.Render(remaining)
-	if len(complete) > width {
-		complete = complete[:width]
-	} else if len(typed) < width {
-		complete += strings.Repeat(" ", width-len(complete))
-	}
 	middle := "|" + complete + "|\n"
 	bottom := "+" + strings.Repeat("-", width) + "+\n"
 	return top + middle + bottom
