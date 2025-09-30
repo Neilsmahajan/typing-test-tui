@@ -7,6 +7,12 @@ import (
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+var (
+	typedStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	remainingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 )
 
 type Model struct {
@@ -96,16 +102,12 @@ func (m Model) View() string {
 	b.WriteString(m.Target + "\n\n")
 
 	typed := m.currentText.Value()
-	if len(typed) > len(m.Target) {
-		typed = m.Target
-	}
 	remaining := ""
 	if len(typed) < len(m.Target) {
 		remaining = m.Target[len(typed):]
 	}
 
-	fullLine := typed + remaining
-	b.WriteString(renderBox(fullLine, len(m.Target)) + "\n\n")
+	b.WriteString(renderBox(typed, remaining, len(m.Target)) + "\n\n")
 
 	if m.finished {
 		b.WriteString(fmt.Sprintf("✅ Done! WPM: %.2f\n", m.wpm))
@@ -115,14 +117,15 @@ func (m Model) View() string {
 	return b.String()
 }
 
-func renderBox(content string, width int) string {
+func renderBox(typed string, remaining string, width int) string {
 	top := "+" + strings.Repeat("-", width) + "+\n"
-	if len(content) > width {
-		content = content[:width]
-	} else if len(content) < width {
-		content += strings.Repeat(" ", width-len(content))
+	complete := typedStyle.Render(typed) + remainingStyle.Render(remaining)
+	if len(complete) > width {
+		complete = complete[:width]
+	} else if len(typed) < width {
+		complete += strings.Repeat(" ", width-len(complete))
 	}
-	middle := "|" + content + "|\n"
+	middle := "|" + complete + "|\n"
 	bottom := "+" + strings.Repeat("-", width) + "+\n"
 	return top + middle + bottom
 }
