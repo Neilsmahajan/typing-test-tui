@@ -57,19 +57,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case tea.KeyCtrlC:
 			return m, tea.Quit
-		default:
-			// start timer on first key
-			if !m.started && len(msg.String()) == 1 {
-				m.started = true
-				m.start = time.Now()
-			}
-			if !m.currentText.Focused() {
-				m.currentText.Focus()
-			}
 		}
 	case error:
 		m.err = msg
 		return m, nil
+	}
+
+	if !m.started && m.currentText.LineCount() == 1 {
+		m.started = true
+		m.start = time.Now()
+	}
+	if !m.currentText.Focused() {
+		m.currentText.Focus()
 	}
 
 	// check if completed (capture finish time & wpm only once)
