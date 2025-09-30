@@ -12,8 +12,8 @@ import (
 type Model struct {
 	// Target text
 	Target string
-	// what user has textarea so far
-	textarea textarea.Model
+	// what user has currentText so far
+	currentText textarea.Model
 	// timing
 	started  bool
 	start    time.Time
@@ -29,9 +29,9 @@ func InitialModel(target string) Model {
 	ti.Focus()
 
 	return Model{
-		Target:   target,
-		textarea: ti,
-		err:      nil,
+		Target:      target,
+		currentText: ti,
+		err:         nil,
 	}
 }
 
@@ -52,8 +52,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.Type {
 		case tea.KeyEsc:
-			if m.textarea.Focused() {
-				m.textarea.Blur()
+			if m.currentText.Focused() {
+				m.currentText.Blur()
 			}
 		case tea.KeyCtrlC:
 			return m, tea.Quit
@@ -63,8 +63,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.started = true
 				m.start = time.Now()
 			}
-			if !m.textarea.Focused() {
-				m.textarea.Focus()
+			if !m.currentText.Focused() {
+				m.currentText.Focus()
 			}
 		}
 	case error:
@@ -73,7 +73,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	// check if completed (capture finish time & wpm only once)
-	if !m.finished && m.textarea.Value() == m.Target {
+	if !m.finished && m.currentText.Value() == m.Target {
 		m.finished = true
 		m.end = time.Now()
 		elapsedMinutes := m.end.Sub(m.start).Minutes()
@@ -82,7 +82,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	m.textarea, cmd = m.textarea.Update(msg)
+	m.currentText, cmd = m.currentText.Update(msg)
 	cmds = append(cmds, cmd)
 	cmd = tea.Batch(cmds...)
 
@@ -96,8 +96,8 @@ func (m Model) View() string {
 	b.WriteString("\nType the following:\n\n")
 	b.WriteString(m.Target + "\n\n")
 
-	// highlight textarea portion
-	b.WriteString(m.textarea.View() + "\n\n")
+	// highlight currentText portion
+	b.WriteString(m.currentText.View() + "\n\n")
 
 	if m.finished {
 		b.WriteString(fmt.Sprintf("✅ Done! WPM: %.2f\n", m.wpm))
