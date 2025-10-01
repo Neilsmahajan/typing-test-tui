@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,6 +15,8 @@ var (
 	typedStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
 	incorrectStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 	remainingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	boxStyle       = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
+	cursorStyle    = lipgloss.NewStyle().Reverse(true)
 )
 
 type Model struct {
@@ -108,7 +111,7 @@ func (m Model) View() string {
 		remaining = m.Target[len(typed):]
 	}
 
-	b.WriteString(m.renderBox(typed, remaining, len(m.Target)) + "\n\n")
+	b.WriteString(m.renderBox(typed, remaining) + "\n\n")
 
 	if m.finished {
 		b.WriteString(fmt.Sprintf("✅ Done! WPM: %.2f\n", m.wpm))
@@ -118,7 +121,7 @@ func (m Model) View() string {
 	return b.String()
 }
 
-func (m Model) renderBox(typed string, remaining string, width int) string {
+func (m Model) renderBox(typed string, remaining string) string {
 	incorrectIndex := len(typed)
 	for i := 0; i < len(typed); i++ {
 		if typed[i] != m.Target[i] {
@@ -126,9 +129,34 @@ func (m Model) renderBox(typed string, remaining string, width int) string {
 			break
 		}
 	}
-	top := "+" + strings.Repeat("-", width) + "+\n"
-	complete := typedStyle.Render(typed[:incorrectIndex]) + incorrectStyle.Render(typed[incorrectIndex:len(typed)]) + remainingStyle.Render(remaining)
-	middle := "|" + complete + "|\n"
-	bottom := "+" + strings.Repeat("-", width) + "+\n"
-	return top + middle + bottom
+	correctSegment := typed[:incorrectIndex]
+	incorrectSegment := typed[incorrectIndex:]
+	complete := typedStyle.Render(correctSegment) + incorrectStyle.Render(incorrectSegment)
+	remainingAfterCursor := remaining
+	if !m.finished {
+		cursorGlyph := " "
+		if len(remainingAfterCursor) > 0 {
+			r, size := utf8.DecodeRuneInString(remainingAfterCursor)
+			if size > 0 {
+				if r == utf8.RuneError {
+					cursorGlyph = remainingAfterCursor[:size]
+				} else {
+					cursorGlyph = string(r)
+				}
+				remainingAfterCursor = remainingAfterCursor[size:]
+			}
+		}
+		complete += cursorStyle.Render(cursorGlyph)
+	}
+	complete += remainingStyle.Render(remainingAfterCursor)
+	targetWidth := lipgloss.Width(m.Target)
+	contentWidth := lipgloss.Width(complete)
+	desiredWidth := targetWidth
+	if contentWidth > desiredWidth {
+		desiredWidth = contentWidth
+	}
+	if contentWidth < desiredWidth {
+		complete += strings.Repeat(" ", desiredWidth-contentWidth)
+	}
+	return boxStyle.Width(desiredWidth).Render(complete)
 }
