@@ -150,13 +150,5 @@ func (m Model) renderBox(typed string, remaining string) string {
 	}
 	complete += remainingStyle.Render(remainingAfterCursor)
 	targetWidth := lipgloss.Width(m.Target)
-	contentWidth := lipgloss.Width(complete)
-	desiredWidth := targetWidth
-	if contentWidth > desiredWidth {
-		desiredWidth = contentWidth
-	}
-	if contentWidth < desiredWidth {
-		complete += strings.Repeat(" ", desiredWidth-contentWidth)
-	}
-	return boxStyle.Width(desiredWidth).Render(complete)
+	return boxStyle.Width(targetWidth).Render(complete)
 }
