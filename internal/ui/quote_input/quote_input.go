@@ -57,7 +57,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if m.finished {
-			return m, tea.Quit
+			m.finished = false
+			m.started = false
+			m.currentText.SetValue("")
+			m.wpm = 0
+			return m, nil
 		}
 
 		switch msg.Type {
@@ -115,7 +119,7 @@ func (m Model) View() string {
 
 	if m.finished {
 		b.WriteString(fmt.Sprintf("✅ Done! WPM: %.2f\n", m.wpm))
-		b.WriteString("Press any key to exit.\n")
+		b.WriteString("Press any key to continue. Press Ctrl+C to exit.\n")
 	}
 
 	return b.String()
