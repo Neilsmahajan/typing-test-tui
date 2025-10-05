@@ -59,4 +59,5 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().StringP("mode", "m", "quote", "Mode of the typing test ('quote', 'words', 'time')")
+	rootCmd.Flags().StringP("language", "l", "english", "Language for the typing test (e.g., 'english' for English, 'spanish' for Spanish', 'code_go' for Go code)")
 }
