@@ -2,6 +2,7 @@ package quote_input
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -18,6 +19,7 @@ var (
 	remainingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	boxStyle       = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
 	cursorStyle    = lipgloss.NewStyle().Reverse(true)
+	rng            = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 type Model struct {
@@ -31,12 +33,12 @@ type Model struct {
 	finished       bool
 	end            time.Time
 	wpm            float64
-	languageQuotes *models.LanguageQuotes
+	languageQuotes models.LanguageQuotes
 	err            error
 }
 
-func InitialModel(languageQuotes *models.LanguageQuotes) Model {
-	target := (*languageQuotes).Quotes[time.Now().UnixNano()%int64(len((*languageQuotes).Quotes))].Text
+func InitialModel(languageQuotes models.LanguageQuotes) Model {
+	target := randomQuoteText(languageQuotes)
 
 	ti := textarea.New()
 	ti.Placeholder = target
@@ -48,6 +50,15 @@ func InitialModel(languageQuotes *models.LanguageQuotes) Model {
 		languageQuotes: languageQuotes,
 		err:            nil,
 	}
+}
+
+func randomQuoteText(languageQuotes models.LanguageQuotes) string {
+	count := len(languageQuotes.Quotes)
+	if count == 0 {
+		return ""
+	}
+
+	return languageQuotes.Quotes[rng.Intn(count)].Text
 }
 
 func (m Model) Init() tea.Cmd {
@@ -65,7 +76,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.finished = false
 			m.started = false
 			m.currentText.SetValue("")
-			m.Target = (*m.languageQuotes).Quotes[time.Now().UnixNano()%int64(len((*m.languageQuotes).Quotes))].Text
+			m.Target = randomQuoteText(m.languageQuotes)
 			m.currentText.Placeholder = m.Target
 			m.wpm = 0
 			return m, nil
