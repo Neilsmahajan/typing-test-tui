@@ -145,7 +145,7 @@ func Execute() {
 func init() {
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.typing-test-tui.yaml)")
 	rootCmd.Flags().StringP("mode", "m", "quote", "Mode of the typing test ('quote', 'words', 'time')")
-	rootCmd.Flags().StringP("language", "l", "english", "Language for the typing test (e.g., 'english' for English, 'spanish' for Spanish, 'go' for Go code)")
+	rootCmd.Flags().StringP("language", "l", "english", "Language for the typing test (e.g., 'english' for English, 'spanish' for Spanish, 'code_go' for Go code)")
 	rootCmd.Flags().IntP("duration", "d", 60, "Duration of the typing test in seconds (only for 'time' mode; options: 15, 30, 60, 120)")
 	rootCmd.Flags().IntP("word-count", "w", 50, "Number of words for the typing test (only for 'words' mode; options: 10, 25, 50, 100)")
 }
