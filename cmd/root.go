@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/neilsmahajan/typing-test-tui/internal/ui/quote_input"
 	"github.com/spf13/cobra"
 )
 
@@ -16,9 +19,12 @@ examples and usage of using your application. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		p := tea.NewProgram(quote_input.InitialModel("The quick brown fox jumps over the lazy dog."))
+		if _, err := p.Run(); err != nil {
+			fmt.Println("Error running program:", err)
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
