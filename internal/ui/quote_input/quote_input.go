@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/neilsmahajan/typing-test-tui/internal/models"
 )
 
 var (
@@ -25,23 +26,27 @@ type Model struct {
 	// what user has currentText so far
 	currentText textarea.Model
 	// timing
-	started  bool
-	start    time.Time
-	finished bool
-	end      time.Time
-	wpm      float64
-	err      error
+	started        bool
+	start          time.Time
+	finished       bool
+	end            time.Time
+	wpm            float64
+	languageQuotes *models.LanguageQuotes
+	err            error
 }
 
-func InitialModel(target string) Model {
+func InitialModel(languageQuotes *models.LanguageQuotes) Model {
+	target := (*languageQuotes).Quotes[time.Now().UnixNano()%int64(len((*languageQuotes).Quotes))].Text
+
 	ti := textarea.New()
 	ti.Placeholder = target
 	ti.Focus()
 
 	return Model{
-		Target:      target,
-		currentText: ti,
-		err:         nil,
+		Target:         target,
+		currentText:    ti,
+		languageQuotes: languageQuotes,
+		err:            nil,
 	}
 }
 
@@ -60,6 +65,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.finished = false
 			m.started = false
 			m.currentText.SetValue("")
+			m.Target = (*m.languageQuotes).Quotes[time.Now().UnixNano()%int64(len((*m.languageQuotes).Quotes))].Text
+			m.currentText.Placeholder = m.Target
 			m.wpm = 0
 			return m, nil
 		}

@@ -9,7 +9,12 @@ import (
 )
 
 func Run(cfg models.Config) error {
-	p := tea.NewProgram(quote_input.InitialModel("The quick brown fox jumps over the lazy dog."))
+	languageQuotes, err := LoadQuotes(cfg.Language)
+	if err != nil {
+		return fmt.Errorf("error loading quotes: %w", err)
+	}
+
+	p := tea.NewProgram(quote_input.InitialModel(languageQuotes))
 
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("error running program: %w", err)
