@@ -3,10 +3,13 @@ package cmd
 import "github.com/spf13/cobra"
 
 var modesCmd = &cobra.Command{
-	Use:   "modes",
-	Short: "List supported modes",
-	Long:  `List all the modes supported by the typing test application.`,
-	Run:   listModes,
+	Use:     "modes",
+	Aliases: []string{"list-modes"},
+	Short:   "List supported modes",
+	Long:    `List all the modes supported by the typing test application.`,
+	Example: "typing-test-tui modes",
+	Args:    cobra.NoArgs,
+	Run:     listModes,
 }
 
 func listModes(cmd *cobra.Command, args []string) {

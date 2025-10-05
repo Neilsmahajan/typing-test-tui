@@ -6,10 +6,13 @@ import (
 )
 
 var languagesCmd = &cobra.Command{
-	Use:   "languages",
-	Short: "List supported languages",
-	Long:  `List all the languages supported by the typing test application.`,
-	Run:   listLanguages,
+	Use:     "languages",
+	Aliases: []string{"list-languages", "langs"},
+	Short:   "List supported languages",
+	Long:    `List all the languages supported by the typing test application.`,
+	Example: "typing-test-tui languages",
+	Args:    cobra.NoArgs,
+	Run:     listLanguages,
 }
 
 func listLanguages(cmd *cobra.Command, args []string) {
