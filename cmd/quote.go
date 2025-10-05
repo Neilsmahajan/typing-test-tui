@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/neilsmahajan/typing-test-tui/cmd/ui/quote_input"
+	"github.com/neilsmahajan/typing-test-tui/internal/ui/quote_input"
 	"github.com/spf13/cobra"
 )
 
