@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/neilsmahajan/typing-test-tui/internal/ui/quote_input"
+	"github.com/neilsmahajan/typing-test-tui/internal/app"
+	"github.com/neilsmahajan/typing-test-tui/internal/models"
 	"github.com/spf13/cobra"
 )
 
@@ -25,23 +25,38 @@ func runTypingTest(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	var p *tea.Program
-
-	switch mode {
-	case "quote":
-		p = tea.NewProgram(quote_input.InitialModel("The quick brown fox jumps over the lazy dog."))
-	default:
-		fmt.Println("Unsupported mode:", mode)
+	language, err := cmd.Flags().GetString("language")
+	if err != nil {
+		fmt.Println("Error reading language flag:", err)
 		return
 	}
 
-	if _, err := p.Run(); err != nil {
-		fmt.Println("Error running program:", err)
+	duration, err := cmd.Flags().GetInt("duration")
+	if err != nil {
+		fmt.Println("Error reading duration flag:", err)
+		return
+	}
+
+	wordCount, err := cmd.Flags().GetInt("word-count")
+	if err != nil {
+		fmt.Println("Error reading word count flag:", err)
+		return
+	}
+
+	var cfg = models.Config{
+		Mode:      models.Mode(mode),
+		Language:  models.Language(language),
+		Duration:  models.Duration(duration),
+		WordCount: models.WordCount(wordCount),
+	}
+
+	if err := app.Run(cfg); err != nil {
+		fmt.Println("Error running app:", err)
+		return
 	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -50,14 +65,9 @@ func Execute() {
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.typing-test-tui.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
 	rootCmd.Flags().StringP("mode", "m", "quote", "Mode of the typing test ('quote', 'words', 'time')")
-	rootCmd.Flags().StringP("language", "l", "english", "Language for the typing test (e.g., 'english' for English, 'spanish' for Spanish', 'code_go' for Go code)")
+	rootCmd.Flags().StringP("language", "l", "english", "Language for the typing test (e.g., 'english' for English, 'spanish' for Spanish, 'go' for Go code)")
+	rootCmd.Flags().IntP("duration", "d", 60, "Duration of the typing test in seconds (only for 'time' mode)")
+	rootCmd.Flags().IntP("word-count", "w", 50, "Number of words for the typing test (only for 'words' mode)")
 }
