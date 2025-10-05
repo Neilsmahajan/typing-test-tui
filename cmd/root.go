@@ -12,19 +12,32 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "typing-test-tui",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "A typing test application in the terminal",
+	Long: `The typing-test-tui is a terminal-based typing test application built with Go and Bubble Tea.
+It provides an interactive interface to practice and improve your typing skills.`,
+	Run: runTypingTest,
+}
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		p := tea.NewProgram(quote_input.InitialModel("The quick brown fox jumps over the lazy dog."))
-		if _, err := p.Run(); err != nil {
-			fmt.Println("Error running program:", err)
-		}
-	},
+func runTypingTest(cmd *cobra.Command, args []string) {
+	mode, err := cmd.Flags().GetString("mode")
+	if err != nil {
+		fmt.Println("Error reading mode flag:", err)
+		return
+	}
+
+	var p *tea.Program
+
+	switch mode {
+	case "quote":
+		p = tea.NewProgram(quote_input.InitialModel("The quick brown fox jumps over the lazy dog."))
+	default:
+		fmt.Println("Unsupported mode:", mode)
+		return
+	}
+
+	if _, err := p.Run(); err != nil {
+		fmt.Println("Error running program:", err)
+	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -45,5 +58,5 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().StringP("mode", "m", "quote", "Mode of the typing test ('quote', 'words', 'time')")
 }
