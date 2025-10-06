@@ -5,6 +5,7 @@ import (
 
 	"github.com/neilsmahajan/typing-test-tui/internal/models"
 	"github.com/neilsmahajan/typing-test-tui/internal/modes/quote"
+	"github.com/neilsmahajan/typing-test-tui/internal/modes/words"
 )
 
 func Run(cfg models.Config) error {
@@ -12,8 +13,7 @@ func Run(cfg models.Config) error {
 	case models.QuoteMode:
 		return quote.Run(cfg)
 	case models.WordsMode:
-		// Run words mode
-		return fmt.Errorf("words mode not implemented yet")
+		return words.Run(cfg)
 	case models.TimeMode:
 		// Run time mode
 		return fmt.Errorf("time mode not implemented yet")
