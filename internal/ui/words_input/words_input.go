@@ -7,26 +7,19 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/neilsmahajan/typing-test-tui/internal/models"
-)
-
-const (
-	boxHorizontalMargin = 4
-	defaultBoxWidth     = 60
+	"github.com/neilsmahajan/typing-test-tui/internal/ui/theme"
+	"github.com/neilsmahajan/typing-test-tui/internal/ui/typing"
 )
 
 type Model struct {
 	// Target text
 	Target string
 	// what user has currentText so far
-	currentText textarea.Model
-	// timing
-	started       bool
-	start         time.Time
-	finished      bool
-	end           time.Time
-	wpm           float64
+	currentText   textarea.Model
 	rng           *rand.Rand
 	viewportWidth int
+	styles        theme.Styles
+	session       typing.Session
 }
 
 func InitialModel(languageWords models.LanguageWords) Model {
@@ -45,13 +38,15 @@ func InitialModel(languageWords models.LanguageWords) Model {
 
 	ti := textarea.New()
 	ti.Placeholder = tempTextToType
-	ti.SetWidth(defaultBoxWidth)
+	ti.SetWidth(typing.DefaultBoxWidth)
 	ti.Focus()
 
 	return Model{
 		Target:      tempTextToType,
 		currentText: ti,
 		rng:         rand.New(rand.NewSource(time.Now().UnixNano())),
+		styles:      theme.DefaultStyles(),
+		session:     typing.NewSession(),
 	}
 }
 

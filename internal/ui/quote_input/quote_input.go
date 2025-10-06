@@ -12,40 +12,33 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/neilsmahajan/typing-test-tui/internal/models"
+	"github.com/neilsmahajan/typing-test-tui/internal/ui/theme"
+	"github.com/neilsmahajan/typing-test-tui/internal/ui/typing"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-)
-
-const (
-	boxHorizontalMargin = 4
-	defaultBoxWidth     = 60
 )
 
 type Model struct {
 	// Target text
 	Target string
 	// what user has currentText so far
-	currentText textarea.Model
-	// timing
-	started        bool
-	start          time.Time
-	finished       bool
-	end            time.Time
-	wpm            float64
+	currentText    textarea.Model
 	languageQuotes models.LanguageQuotes
 	rng            *rand.Rand
 	viewportWidth  int
-	styles         Styles
+	styles         theme.Styles
+	session        typing.Session
 }
 
 func InitialModel(languageQuotes models.LanguageQuotes) Model {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	quote := randomQuote(languageQuotes, rng)
-	styles := defaultStyles()
+	styles := theme.DefaultStyles()
+	session := typing.NewSession()
 
 	ti := textarea.New()
 	ti.Placeholder = quote.Text
-	ti.SetWidth(defaultBoxWidth)
+	ti.SetWidth(typing.DefaultBoxWidth)
 	ti.Focus()
 
 	return Model{
@@ -54,6 +47,7 @@ func InitialModel(languageQuotes models.LanguageQuotes) Model {
 		languageQuotes: languageQuotes,
 		rng:            rng,
 		styles:         styles,
+		session:        session,
 	}
 }
 
@@ -80,14 +74,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentText.SetWidth(m.contentWidth())
 		return m, nil
 	case tea.KeyMsg:
-		if m.finished {
-			m.finished = false
-			m.started = false
+		if m.session.Finished() {
+			m.session.Reset()
 			m.currentText.SetValue("")
-			m.Target = randomQuote(m.languageQuotes, m.rng).Text
+			quote := randomQuote(m.languageQuotes, m.rng)
+			m.Target = quote.Text
 			m.currentText.Placeholder = m.Target
 			m.currentText.SetWidth(m.contentWidth())
-			m.wpm = 0
 			return m, nil
 		}
 
@@ -103,25 +96,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if !m.started && m.currentText.LineCount() == 1 {
-		m.started = true
-		m.start = time.Now()
-	}
 	if !m.currentText.Focused() {
 		m.currentText.Focus()
 	}
 
-	// check if completed (capture finish time & wpm only once)
-	if !m.finished && m.currentText.Value() == m.Target {
-		m.finished = true
-		m.end = time.Now()
-		elapsedMinutes := m.end.Sub(m.start).Minutes()
-		if elapsedMinutes > 0 {
-			m.wpm = float64(len(strings.Fields(m.Target))) / elapsedMinutes
-		}
+	m.currentText, cmd = m.currentText.Update(msg)
+
+	if !m.session.Started() && m.currentText.Value() != "" {
+		m.session.Start(time.Now())
 	}
 
-	m.currentText, cmd = m.currentText.Update(msg)
+	// check if completed (capture finish time & wpm only once)
+	if !m.session.Finished() && m.currentText.Value() == m.Target {
+		m.session.Finish(time.Now(), m.Target)
+	}
 
 	return m, cmd
 }
@@ -138,7 +126,7 @@ func (m Model) View() string {
 		m.renderStats(typed, width),
 	}
 
-	if m.finished {
+	if m.session.Finished() {
 		sections = append(sections, m.renderCompletion(width))
 	} else {
 		sections = append(sections, m.renderInstructions(width))
@@ -171,12 +159,12 @@ func (m Model) renderBox(typed string) string {
 		incorrectSegment = target[incorrectIndex:limit]
 	}
 
-	complete := m.styles.Typed.Render(correctSegment) + m.styles.Incorrect.Render(makeSpacesVisible(incorrectSegment))
+	complete := m.styles.Typed.Render(correctSegment) + m.styles.Incorrect.Render(typing.MakeSpacesVisible(incorrectSegment))
 
 	if typedLen > targetLen {
 		extra := typed[targetLen:]
 		if extra != "" {
-			complete += m.styles.Incorrect.Render(makeSpacesVisible(extra))
+			complete += m.styles.Incorrect.Render(typing.MakeSpacesVisible(extra))
 		}
 	}
 
@@ -185,7 +173,7 @@ func (m Model) renderBox(typed string) string {
 		remainingAfterCursor = target[typedLen:]
 	}
 
-	if !m.finished {
+	if !m.session.Finished() {
 		cursorGlyph := " "
 		if len(remainingAfterCursor) > 0 {
 			r, size := utf8.DecodeRuneInString(remainingAfterCursor)
@@ -220,11 +208,11 @@ func (m Model) renderStats(typed string, width int) string {
 	}
 
 	wpmValue := "--"
-	if wpm := m.currentWPM(typed); wpm > 0 {
+	if wpm := m.session.CurrentWPM(time.Now(), typed); wpm > 0 {
 		wpmValue = fmt.Sprintf("%.1f", wpm)
 	}
 
-	elapsedValue := formatDuration(m.elapsed())
+	elapsedValue := typing.FormatDuration(m.session.Elapsed(time.Now()))
 
 	statEntries := []string{
 		m.renderStat("Progress", progress),
@@ -256,8 +244,8 @@ func (m Model) renderInstructions(width int) string {
 }
 
 func (m Model) renderCompletion(width int) string {
-	duration := m.end.Sub(m.start)
-	summary := fmt.Sprintf("✅ Completed in %s · WPM %.2f", formatDuration(duration), m.wpm)
+	duration := m.session.Elapsed(time.Now())
+	summary := fmt.Sprintf("✅ Completed in %s · WPM %.2f", typing.FormatDuration(duration), m.session.WPM())
 	lines := []string{
 		m.styles.Success.MaxWidth(width).Render(summary),
 		m.styles.Instruction.MaxWidth(width).Render("Press any key for another quote or Ctrl+C to exit."),
@@ -271,19 +259,10 @@ func (m Model) renderHeader(width int) string {
 
 func (m Model) renderSubtitle(width int) string {
 	languageName := displayLanguage(m.languageQuotes.Language)
-	words := wordCount(m.Target)
+	words := typing.WordCount(m.Target)
 	chars := utf8.RuneCountInString(m.Target)
 	info := fmt.Sprintf("Language: %s · %d words · %d chars", languageName, words, chars)
 	return m.styles.Subtitle.MaxWidth(width).Render(info)
-}
-
-func makeSpacesVisible(text string) string {
-	return strings.Map(func(r rune) rune {
-		if r == ' ' {
-			return '_'
-		}
-		return r
-	}, text)
 }
 
 func (m Model) contentWidth() int {
@@ -301,7 +280,7 @@ func (m Model) boxOuterWidth() int {
 	minOuter := frame + 1
 
 	if m.viewportWidth > 0 {
-		width := m.viewportWidth - boxHorizontalMargin
+		width := m.viewportWidth - typing.BoxHorizontalMargin
 		if width < minOuter {
 			width = minOuter
 		}
@@ -309,8 +288,8 @@ func (m Model) boxOuterWidth() int {
 	}
 
 	targetWidth := lipgloss.Width(m.Target)
-	inner := defaultBoxWidth
-	if targetWidth > 0 && targetWidth < defaultBoxWidth {
+	inner := typing.DefaultBoxWidth
+	if targetWidth > 0 && targetWidth < typing.DefaultBoxWidth {
 		inner = targetWidth
 	}
 	outer := inner + frame
@@ -320,47 +299,6 @@ func (m Model) boxOuterWidth() int {
 	return outer
 }
 
-func (m Model) currentWPM(typed string) float64 {
-	if m.finished {
-		return m.wpm
-	}
-	if !m.started {
-		return 0
-	}
-	elapsed := time.Since(m.start).Minutes()
-	if elapsed <= 0 {
-		return 0
-	}
-	words := float64(len(strings.Fields(typed)))
-	if words == 0 {
-		words = float64(utf8.RuneCountInString(typed)) / 5
-	}
-	if words <= 0 {
-		return 0
-	}
-	return words / elapsed
-}
-
-func (m Model) elapsed() time.Duration {
-	if !m.started {
-		return 0
-	}
-	if m.finished {
-		return m.end.Sub(m.start)
-	}
-	return time.Since(m.start)
-}
-
-func formatDuration(d time.Duration) string {
-	if d <= 0 {
-		return "00:00"
-	}
-	seconds := int(d.Seconds())
-	minutes := seconds / 60
-	remaining := seconds % 60
-	return fmt.Sprintf("%02d:%02d", minutes, remaining)
-}
-
 func displayLanguage(lang models.Language) string {
 	value := strings.ReplaceAll(strings.ReplaceAll(string(lang), "_", " "), "-", " ")
 	value = strings.TrimSpace(strings.TrimPrefix(value, "code "))
@@ -368,8 +306,4 @@ func displayLanguage(lang models.Language) string {
 		return "Unknown"
 	}
 	return cases.Title(language.English).String(value)
-}
-
-func wordCount(text string) int {
-	return len(strings.Fields(text))
 }
