@@ -67,7 +67,6 @@ func (m Model) Init() tea.Cmd {
 
 // Update handles messages (key presses, etc.)
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -114,8 +113,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.currentText, cmd = m.currentText.Update(msg)
-	cmds = append(cmds, cmd)
-	cmd = tea.Batch(cmds...)
 
 	return m, cmd
 }
