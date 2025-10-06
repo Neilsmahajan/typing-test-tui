@@ -34,7 +34,6 @@ type Model struct {
 	wpm            float64
 	languageQuotes models.LanguageQuotes
 	rng            *rand.Rand
-	err            error
 }
 
 func InitialModel(languageQuotes models.LanguageQuotes) Model {
@@ -50,7 +49,6 @@ func InitialModel(languageQuotes models.LanguageQuotes) Model {
 		currentText:    ti,
 		languageQuotes: languageQuotes,
 		rng:            rng,
-		err:            nil,
 	}
 }
 
@@ -92,7 +90,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case error:
-		m.err = msg
 		return m, nil
 	}
 
@@ -175,20 +172,10 @@ func (m Model) renderBox(typed string, remaining string) string {
 }
 
 func makeSpacesVisible(text string) string {
-	if text == "" {
-		return text
-	}
-
-	var b strings.Builder
-	b.Grow(len(text))
-
-	for _, r := range text {
+	return strings.Map(func(r rune) rune {
 		if r == ' ' {
-			b.WriteRune('_')
-			continue
+			return '_'
 		}
-		b.WriteRune(r)
-	}
-
-	return b.String()
+		return r
+	}, text)
 }
