@@ -152,8 +152,8 @@ func (m Model) renderBox(typed string, remaining string) string {
 		}
 	}
 	correctSegment := typed[:incorrectIndex]
-	incorrectSegment := typed[incorrectIndex:]
-	complete := typedStyle.Render(correctSegment) + incorrectStyle.Render(incorrectSegment)
+	incorrectSegment := m.Target[incorrectIndex:len(typed)]
+	complete := typedStyle.Render(correctSegment) + incorrectStyle.Render(makeSpacesVisible(incorrectSegment))
 	remainingAfterCursor := remaining
 	if !m.finished {
 		cursorGlyph := " "
@@ -173,4 +173,23 @@ func (m Model) renderBox(typed string, remaining string) string {
 	complete += remainingStyle.Render(remainingAfterCursor)
 	targetWidth := lipgloss.Width(m.Target)
 	return boxStyle.Width(targetWidth).Render(complete)
+}
+
+func makeSpacesVisible(text string) string {
+	if text == "" {
+		return text
+	}
+
+	var b strings.Builder
+	b.Grow(len(text))
+
+	for _, r := range text {
+		if r == ' ' {
+			b.WriteRune('_')
+			continue
+		}
+		b.WriteRune(r)
+	}
+
+	return b.String()
 }
