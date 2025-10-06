@@ -19,7 +19,6 @@ var (
 	remainingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	boxStyle       = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
 	cursorStyle    = lipgloss.NewStyle().Reverse(true)
-	rng            = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 type Model struct {
@@ -34,31 +33,34 @@ type Model struct {
 	end            time.Time
 	wpm            float64
 	languageQuotes models.LanguageQuotes
+	rng            *rand.Rand
 	err            error
 }
 
 func InitialModel(languageQuotes models.LanguageQuotes) Model {
-	target := randomQuoteText(languageQuotes)
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	quote := randomQuote(languageQuotes, rng)
 
 	ti := textarea.New()
-	ti.Placeholder = target
+	ti.Placeholder = quote.Text
 	ti.Focus()
 
 	return Model{
-		Target:         target,
+		Target:         quote.Text,
 		currentText:    ti,
 		languageQuotes: languageQuotes,
+		rng:            rng,
 		err:            nil,
 	}
 }
 
-func randomQuoteText(languageQuotes models.LanguageQuotes) string {
+func randomQuote(languageQuotes models.LanguageQuotes, rng *rand.Rand) models.Quote {
 	count := len(languageQuotes.Quotes)
 	if count == 0 {
-		return ""
+		return models.Quote{}
 	}
 
-	return languageQuotes.Quotes[rng.Intn(count)].Text
+	return languageQuotes.Quotes[rng.Intn(count)]
 }
 
 func (m Model) Init() tea.Cmd {
@@ -75,7 +77,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.finished = false
 			m.started = false
 			m.currentText.SetValue("")
-			m.Target = randomQuoteText(m.languageQuotes)
+			m.Target = randomQuote(m.languageQuotes, m.rng).Text
 			m.currentText.Placeholder = m.Target
 			m.wpm = 0
 			return m, nil
