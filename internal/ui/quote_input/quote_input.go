@@ -21,6 +21,11 @@ var (
 	cursorStyle    = lipgloss.NewStyle().Reverse(true)
 )
 
+const (
+	boxHorizontalMargin = 4
+	defaultBoxWidth     = 60
+)
+
 type Model struct {
 	// Target text
 	Target string
@@ -34,6 +39,7 @@ type Model struct {
 	wpm            float64
 	languageQuotes models.LanguageQuotes
 	rng            *rand.Rand
+	viewportWidth  int
 }
 
 func InitialModel(languageQuotes models.LanguageQuotes) Model {
@@ -42,6 +48,7 @@ func InitialModel(languageQuotes models.LanguageQuotes) Model {
 
 	ti := textarea.New()
 	ti.Placeholder = quote.Text
+	ti.SetWidth(defaultBoxWidth)
 	ti.Focus()
 
 	return Model{
@@ -70,6 +77,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.viewportWidth = msg.Width
+		m.currentText.SetWidth(m.contentWidth())
+		return m, nil
 	case tea.KeyMsg:
 		if m.finished {
 			m.finished = false
@@ -77,6 +88,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentText.SetValue("")
 			m.Target = randomQuote(m.languageQuotes, m.rng).Text
 			m.currentText.Placeholder = m.Target
+			m.currentText.SetWidth(m.contentWidth())
 			m.wpm = 0
 			return m, nil
 		}
@@ -121,7 +133,6 @@ func (m Model) View() string {
 	var b strings.Builder
 
 	b.WriteString("\nType the following:\n\n")
-	b.WriteString(m.Target + "\n\n")
 
 	typed := m.currentText.Value()
 	remaining := ""
@@ -167,8 +178,9 @@ func (m Model) renderBox(typed string, remaining string) string {
 		complete += cursorStyle.Render(cursorGlyph)
 	}
 	complete += remainingStyle.Render(remainingAfterCursor)
-	targetWidth := lipgloss.Width(m.Target)
-	return boxStyle.Width(targetWidth).Render(complete)
+	innerWidth := m.contentWidth()
+	wrapped := lipgloss.NewStyle().Width(innerWidth).MaxWidth(innerWidth).Render(complete)
+	return boxStyle.Width(m.boxOuterWidth()).Render(wrapped)
 }
 
 func makeSpacesVisible(text string) string {
@@ -178,4 +190,38 @@ func makeSpacesVisible(text string) string {
 		}
 		return r
 	}, text)
+}
+
+func (m Model) contentWidth() int {
+	outer := m.boxOuterWidth()
+	frame := boxStyle.GetHorizontalFrameSize()
+	inner := outer - frame
+	if inner < 1 {
+		inner = 1
+	}
+	return inner
+}
+
+func (m Model) boxOuterWidth() int {
+	frame := boxStyle.GetHorizontalFrameSize()
+	minOuter := frame + 1
+
+	if m.viewportWidth > 0 {
+		width := m.viewportWidth - boxHorizontalMargin
+		if width < minOuter {
+			width = minOuter
+		}
+		return width
+	}
+
+	targetWidth := lipgloss.Width(m.Target)
+	inner := defaultBoxWidth
+	if targetWidth > 0 && targetWidth < defaultBoxWidth {
+		inner = targetWidth
+	}
+	outer := inner + frame
+	if outer < minOuter {
+		outer = minOuter
+	}
+	return outer
 }
