@@ -2,6 +2,7 @@ package quote_input
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 	"time"
@@ -11,14 +12,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/neilsmahajan/typing-test-tui/internal/models"
-)
-
-var (
-	typedStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	incorrectStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-	remainingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	boxStyle       = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
-	cursorStyle    = lipgloss.NewStyle().Reverse(true)
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -40,11 +35,13 @@ type Model struct {
 	languageQuotes models.LanguageQuotes
 	rng            *rand.Rand
 	viewportWidth  int
+	styles         Styles
 }
 
 func InitialModel(languageQuotes models.LanguageQuotes) Model {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	quote := randomQuote(languageQuotes, rng)
+	styles := defaultStyles()
 
 	ti := textarea.New()
 	ti.Placeholder = quote.Text
@@ -56,6 +53,7 @@ func InitialModel(languageQuotes models.LanguageQuotes) Model {
 		currentText:    ti,
 		languageQuotes: languageQuotes,
 		rng:            rng,
+		styles:         styles,
 	}
 }
 
@@ -130,38 +128,63 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View defines UI rendering
 func (m Model) View() string {
-	var b strings.Builder
-
-	b.WriteString("\nType the following:\n\n")
-
 	typed := m.currentText.Value()
-	remaining := ""
-	if len(typed) < len(m.Target) {
-		remaining = m.Target[len(typed):]
-	}
+	width := m.boxOuterWidth()
 
-	b.WriteString(m.renderBox(typed, remaining) + "\n\n")
+	sections := []string{
+		m.renderHeader(width),
+		m.renderSubtitle(width),
+		m.renderBox(typed),
+		m.renderStats(typed, width),
+	}
 
 	if m.finished {
-		b.WriteString(fmt.Sprintf("✅ Done! WPM: %.2f\n", m.wpm))
-		b.WriteString("Press any key to continue. Press Ctrl+C to exit.\n")
+		sections = append(sections, m.renderCompletion(width))
+	} else {
+		sections = append(sections, m.renderInstructions(width))
 	}
 
-	return b.String()
+	body := lipgloss.JoinVertical(lipgloss.Left, sections...)
+	return "\n" + m.styles.Container.Width(width).Render(body)
 }
 
-func (m Model) renderBox(typed string, remaining string) string {
-	incorrectIndex := len(typed)
-	for i := 0; i < len(typed); i++ {
-		if typed[i] != m.Target[i] {
+func (m Model) renderBox(typed string) string {
+	target := m.Target
+	typedLen := len(typed)
+	targetLen := len(target)
+	limit := typedLen
+	if limit > targetLen {
+		limit = targetLen
+	}
+
+	incorrectIndex := limit
+	for i := 0; i < limit; i++ {
+		if typed[i] != target[i] {
 			incorrectIndex = i
 			break
 		}
 	}
-	correctSegment := typed[:incorrectIndex]
-	incorrectSegment := m.Target[incorrectIndex:len(typed)]
-	complete := typedStyle.Render(correctSegment) + incorrectStyle.Render(makeSpacesVisible(incorrectSegment))
-	remainingAfterCursor := remaining
+
+	correctSegment := target[:incorrectIndex]
+	incorrectSegment := ""
+	if incorrectIndex < limit {
+		incorrectSegment = target[incorrectIndex:limit]
+	}
+
+	complete := m.styles.Typed.Render(correctSegment) + m.styles.Incorrect.Render(makeSpacesVisible(incorrectSegment))
+
+	if typedLen > targetLen {
+		extra := typed[targetLen:]
+		if extra != "" {
+			complete += m.styles.Incorrect.Render(makeSpacesVisible(extra))
+		}
+	}
+
+	remainingAfterCursor := ""
+	if typedLen < targetLen {
+		remainingAfterCursor = target[typedLen:]
+	}
+
 	if !m.finished {
 		cursorGlyph := " "
 		if len(remainingAfterCursor) > 0 {
@@ -175,12 +198,83 @@ func (m Model) renderBox(typed string, remaining string) string {
 				remainingAfterCursor = remainingAfterCursor[size:]
 			}
 		}
-		complete += cursorStyle.Render(cursorGlyph)
+		complete += m.styles.Cursor.Render(cursorGlyph)
 	}
-	complete += remainingStyle.Render(remainingAfterCursor)
+
+	complete += m.styles.Remaining.Render(remainingAfterCursor)
 	innerWidth := m.contentWidth()
-	wrapped := lipgloss.NewStyle().Width(innerWidth).MaxWidth(innerWidth).Render(complete)
-	return boxStyle.Width(m.boxOuterWidth()).Render(wrapped)
+	wrapped := m.styles.QuoteContent.Width(innerWidth).Render(complete)
+	return m.styles.QuoteBox.Width(m.boxOuterWidth()).Render(wrapped)
+}
+
+func (m Model) renderStats(typed string, width int) string {
+	totalRunes := utf8.RuneCountInString(m.Target)
+	typedRunes := utf8.RuneCountInString(typed)
+	progress := fmt.Sprintf("%d/%d chars", typedRunes, totalRunes)
+	if totalRunes > 0 {
+		percent := int(math.Round(float64(typedRunes) / float64(totalRunes) * 100))
+		if percent > 100 {
+			percent = 100
+		}
+		progress = fmt.Sprintf("%s (%d%%)", progress, percent)
+	}
+
+	wpmValue := "--"
+	if wpm := m.currentWPM(typed); wpm > 0 {
+		wpmValue = fmt.Sprintf("%.1f", wpm)
+	}
+
+	elapsedValue := formatDuration(m.elapsed())
+
+	statEntries := []string{
+		m.renderStat("Progress", progress),
+		m.renderStat("WPM", wpmValue),
+		m.renderStat("Time", elapsedValue),
+	}
+
+	row := statEntries[0]
+	for i := 1; i < len(statEntries); i++ {
+		row = lipgloss.JoinHorizontal(lipgloss.Left, row, m.styles.StatSeparator, statEntries[i])
+	}
+
+	return m.styles.StatsRow.MaxWidth(width).Render(row)
+}
+
+func (m Model) renderStat(label, value string) string {
+	block := lipgloss.JoinVertical(
+		lipgloss.Left,
+		m.styles.StatLabel.Render(label),
+		m.styles.StatValue.Render(value),
+	)
+	return m.styles.StatBlock.Render(block)
+}
+
+func (m Model) renderInstructions(width int) string {
+	parts := []string{"Esc: blur focus", "Ctrl+C: exit"}
+	message := strings.Join(parts, " • ")
+	return m.styles.Instruction.MaxWidth(width).Render(message)
+}
+
+func (m Model) renderCompletion(width int) string {
+	duration := m.end.Sub(m.start)
+	summary := fmt.Sprintf("✅ Completed in %s · WPM %.2f", formatDuration(duration), m.wpm)
+	lines := []string{
+		m.styles.Success.MaxWidth(width).Render(summary),
+		m.styles.Instruction.MaxWidth(width).Render("Press any key for another quote or Ctrl+C to exit."),
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, lines...)
+}
+
+func (m Model) renderHeader(width int) string {
+	return m.styles.Header.MaxWidth(width).Render("Quote Mode")
+}
+
+func (m Model) renderSubtitle(width int) string {
+	languageName := displayLanguage(m.languageQuotes.Language)
+	words := wordCount(m.Target)
+	chars := utf8.RuneCountInString(m.Target)
+	info := fmt.Sprintf("Language: %s · %d words · %d chars", languageName, words, chars)
+	return m.styles.Subtitle.MaxWidth(width).Render(info)
 }
 
 func makeSpacesVisible(text string) string {
@@ -194,7 +288,7 @@ func makeSpacesVisible(text string) string {
 
 func (m Model) contentWidth() int {
 	outer := m.boxOuterWidth()
-	frame := boxStyle.GetHorizontalFrameSize()
+	frame := m.styles.QuoteBox.GetHorizontalFrameSize()
 	inner := outer - frame
 	if inner < 1 {
 		inner = 1
@@ -203,7 +297,7 @@ func (m Model) contentWidth() int {
 }
 
 func (m Model) boxOuterWidth() int {
-	frame := boxStyle.GetHorizontalFrameSize()
+	frame := m.styles.QuoteBox.GetHorizontalFrameSize()
 	minOuter := frame + 1
 
 	if m.viewportWidth > 0 {
@@ -224,4 +318,58 @@ func (m Model) boxOuterWidth() int {
 		outer = minOuter
 	}
 	return outer
+}
+
+func (m Model) currentWPM(typed string) float64 {
+	if m.finished {
+		return m.wpm
+	}
+	if !m.started {
+		return 0
+	}
+	elapsed := time.Since(m.start).Minutes()
+	if elapsed <= 0 {
+		return 0
+	}
+	words := float64(len(strings.Fields(typed)))
+	if words == 0 {
+		words = float64(utf8.RuneCountInString(typed)) / 5
+	}
+	if words <= 0 {
+		return 0
+	}
+	return words / elapsed
+}
+
+func (m Model) elapsed() time.Duration {
+	if !m.started {
+		return 0
+	}
+	if m.finished {
+		return m.end.Sub(m.start)
+	}
+	return time.Since(m.start)
+}
+
+func formatDuration(d time.Duration) string {
+	if d <= 0 {
+		return "00:00"
+	}
+	seconds := int(d.Seconds())
+	minutes := seconds / 60
+	remaining := seconds % 60
+	return fmt.Sprintf("%02d:%02d", minutes, remaining)
+}
+
+func displayLanguage(lang models.Language) string {
+	value := strings.ReplaceAll(strings.ReplaceAll(string(lang), "_", " "), "-", " ")
+	value = strings.TrimSpace(strings.TrimPrefix(value, "code "))
+	if value == "" {
+		return "Unknown"
+	}
+	return cases.Title(language.English).String(value)
+}
+
+func wordCount(text string) int {
+	return len(strings.Fields(text))
 }
