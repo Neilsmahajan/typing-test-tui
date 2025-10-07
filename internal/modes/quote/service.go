@@ -4,12 +4,13 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/neilsmahajan/typing-test-tui/internal/loaders"
 	"github.com/neilsmahajan/typing-test-tui/internal/models"
 	"github.com/neilsmahajan/typing-test-tui/internal/ui/quote_input"
 )
 
 func Run(cfg models.Config) error {
-	languageQuotes, err := LoadQuotes(cfg.Language)
+	languageQuotes, err := loaders.LoadQuotes(cfg.Language)
 	if err != nil {
 		return fmt.Errorf("error loading quotes: %w", err)
 	}

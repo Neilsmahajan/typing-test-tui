@@ -1,4 +1,4 @@
-package words
+package loaders
 
 import (
 	wordsdata "github.com/neilsmahajan/typing-test-tui/internal/data/words"

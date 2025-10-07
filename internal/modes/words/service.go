@@ -4,12 +4,13 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/neilsmahajan/typing-test-tui/internal/loaders"
 	"github.com/neilsmahajan/typing-test-tui/internal/models"
 	"github.com/neilsmahajan/typing-test-tui/internal/ui/words_input"
 )
 
 func Run(cfg models.Config) error {
-	languageWords, err := LoadWords(cfg.Language)
+	languageWords, err := loaders.LoadWords(cfg.Language)
 	if err != nil {
 		return fmt.Errorf("error loading words: %w", err)
 	}
