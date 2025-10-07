@@ -15,8 +15,7 @@ func Run(cfg models.Config) error {
 	case models.WordsMode:
 		return words.Run(cfg)
 	case models.TimeMode:
-		// Run time mode
-		return fmt.Errorf("time mode not implemented yet")
+		return words.Run(cfg)
 	default:
 		return fmt.Errorf("unsupported mode: %s", cfg.Mode)
 	}
