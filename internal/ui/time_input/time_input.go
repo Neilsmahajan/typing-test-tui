@@ -168,7 +168,7 @@ func (m Model) View() string {
 }
 
 func (m Model) renderHeader(width int) string {
-	return m.styles.Header.MaxWidth(width).Render("Words Mode")
+	return m.styles.Header.MaxWidth(width).Render("Time Mode")
 }
 
 func (m Model) renderSubtitle(width int) string {
