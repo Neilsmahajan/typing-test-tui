@@ -81,13 +81,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		if m.session.Finished() {
-			m.session.Reset()
-			m.currentText.SetValue("")
-			target := generateTargetWords(m.rng, m.languageWords, m.wordCount)
-			m.Target = target
-			m.currentText.Placeholder = m.Target
-			metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
-			m.currentText.SetWidth(metrics.ContentWidth)
+			switch msg.Type {
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			case tea.KeyEnter:
+				m.session.Reset()
+				m.currentText.SetValue("")
+				target := generateTargetWords(m.rng, m.languageWords, m.wordCount)
+				m.Target = target
+				m.currentText.Placeholder = m.Target
+				metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
+				m.currentText.SetWidth(metrics.ContentWidth)
+			}
 			return m, nil
 		}
 
@@ -154,7 +159,7 @@ func (m Model) View() string {
 			Styles:  m.styles,
 			Session: &m.session,
 			Now:     now,
-			Prompt:  "Press any key for another word set or Ctrl+C to exit.",
+			Prompt:  "Press Enter for another word set or Ctrl+C to exit.",
 		}))
 	} else {
 		sections = append(sections, typing.RenderInstructions(typing.InstructionsConfig{

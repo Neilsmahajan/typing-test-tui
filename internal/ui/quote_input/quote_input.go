@@ -72,13 +72,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tea.KeyMsg:
 		if m.session.Finished() {
-			m.session.Reset()
-			m.currentText.SetValue("")
-			quote := randomQuote(m.languageQuotes, m.rng)
-			m.Target = quote.Text
-			m.currentText.Placeholder = m.Target
-			metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
-			m.currentText.SetWidth(metrics.ContentWidth)
+			switch msg.Type {
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			case tea.KeyEnter:
+				m.session.Reset()
+				m.currentText.SetValue("")
+				quote := randomQuote(m.languageQuotes, m.rng)
+				m.Target = quote.Text
+				m.currentText.Placeholder = m.Target
+				metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
+				m.currentText.SetWidth(metrics.ContentWidth)
+			}
 			return m, nil
 		}
 
@@ -145,7 +150,7 @@ func (m Model) View() string {
 			Styles:  m.styles,
 			Session: &m.session,
 			Now:     now,
-			Prompt:  "Press any key for another quote or Ctrl+C to exit.",
+			Prompt:  "Press Enter for another quote or Ctrl+C to exit.",
 		}))
 	} else {
 		sections = append(sections, typing.RenderInstructions(typing.InstructionsConfig{

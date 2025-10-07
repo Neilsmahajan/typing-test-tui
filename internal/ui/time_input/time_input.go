@@ -133,15 +133,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 	case tea.KeyMsg:
 		if m.session.Finished() {
-			m.session.Reset()
-			m.currentText.SetValue("")
-			target := generateTargetWords(m.rng, m.languageWords, m.duration)
-			m.Target = target
-			m.currentText.Placeholder = m.Target
-			metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
-			m.currentText.SetWidth(metrics.ContentWidth)
-			m.remaining = m.totalDuration
-			m.deadline = time.Time{}
+			switch msg.Type {
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			case tea.KeyEnter:
+				m.session.Reset()
+				m.currentText.SetValue("")
+				target := generateTargetWords(m.rng, m.languageWords, m.duration)
+				m.Target = target
+				m.currentText.Placeholder = m.Target
+				metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
+				m.currentText.SetWidth(metrics.ContentWidth)
+				m.remaining = m.totalDuration
+				m.deadline = time.Time{}
+			}
 			return m, nil
 		}
 
@@ -220,7 +225,7 @@ func (m Model) View() string {
 			Styles:  m.styles,
 			Session: &m.session,
 			Now:     now,
-			Prompt:  "Press any key for another word set or Ctrl+C to exit.",
+			Prompt:  "Press Enter to start another word set or Ctrl+C to exit.",
 		}))
 	} else {
 		sections = append(sections, typing.RenderInstructions(typing.InstructionsConfig{
