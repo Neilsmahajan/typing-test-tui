@@ -14,7 +14,7 @@ func Run(cfg models.Config) error {
 		return fmt.Errorf("error loading words: %w", err)
 	}
 
-	p := tea.NewProgram(words_input.InitialModel(languageWords))
+	p := tea.NewProgram(words_input.InitialModel(languageWords, cfg.WordCount))
 
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("error running program: %w", err)
