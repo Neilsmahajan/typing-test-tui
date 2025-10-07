@@ -26,11 +26,33 @@ type Model struct {
 	viewportWidth int
 	styles        theme.Styles
 	session       typing.Session
+	totalDuration time.Duration
+	remaining     time.Duration
+	deadline      time.Time
+	tickInterval  time.Duration
 }
+
+type tickMsg struct {
+	now time.Time
+}
+
+const (
+	wordsPerSecondEstimate = 6
+	minInitialWords        = 120
+	wordBufferChunk        = 40
+	minRemainingRunes      = 200
+	defaultTickInterval    = 100 * time.Millisecond
+)
 
 func InitialModel(languageWords models.LanguageWords, duration models.Duration) Model {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	target := generateTargetWords(rng, languageWords, duration)
+	totalDuration := time.Duration(duration) * time.Second
+	if totalDuration <= 0 {
+		totalDuration = 60 * time.Second
+	}
+	styles := theme.DefaultStyles()
+	session := typing.NewSession()
 
 	ti := textarea.New()
 	ti.Placeholder = target
@@ -43,17 +65,24 @@ func InitialModel(languageWords models.LanguageWords, duration models.Duration) 
 		duration:      duration,
 		languageWords: languageWords,
 		rng:           rng,
-		styles:        theme.DefaultStyles(),
-		session:       typing.NewSession(),
+		styles:        styles,
+		session:       session,
+		totalDuration: totalDuration,
+		remaining:     totalDuration,
+		tickInterval:  defaultTickInterval,
 	}
 }
 
 func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, duration models.Duration) string {
+	wordCount := estimateInitialWordCount(duration)
+	return generateWordString(rng, languageWords, wordCount)
+}
+
+func generateWordString(rng *rand.Rand, languageWords models.LanguageWords, count int) string {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
 	available := languageWords.Words
-	count := int(duration / 2) // assuming average 2 words per second
 	if len(available) == 0 || count <= 0 {
 		return ""
 	}
@@ -65,13 +94,21 @@ func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, dur
 	return strings.Join(result, " ")
 }
 
+func estimateInitialWordCount(duration models.Duration) int {
+	count := int(duration) * wordsPerSecondEstimate
+	if count < minInitialWords {
+		count = minInitialWords
+	}
+	return count
+}
+
 func (m Model) Init() tea.Cmd {
 	return textarea.Blink
 }
 
 // Update handles messages (key presses, etc.)
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -79,6 +116,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
 		m.currentText.SetWidth(metrics.ContentWidth)
 		return m, nil
+	case tickMsg:
+		if m.session.Started() && !m.session.Finished() {
+			remaining := m.deadline.Sub(msg.now)
+			if remaining <= 0 {
+				remaining = 0
+				m.session.Finish(msg.now, m.currentText.Value())
+			}
+			m.remaining = remaining
+		}
+		if m.session.Started() && !m.session.Finished() {
+			if tick := m.scheduleTick(); tick != nil {
+				cmds = append(cmds, tick)
+			}
+		}
+		return m, tea.Batch(cmds...)
 	case tea.KeyMsg:
 		if m.session.Finished() {
 			m.session.Reset()
@@ -88,6 +140,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentText.Placeholder = m.Target
 			metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
 			m.currentText.SetWidth(metrics.ContentWidth)
+			m.remaining = m.totalDuration
+			m.deadline = time.Time{}
 			return m, nil
 		}
 
@@ -107,18 +161,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentText.Focus()
 	}
 
-	m.currentText, cmd = m.currentText.Update(msg)
+	updated, cmd := m.currentText.Update(msg)
+	m.currentText = updated
 
+	if cmd != nil {
+		cmds = append(cmds, cmd)
+	}
+
+	now := time.Now()
 	if !m.session.Started() && m.currentText.Value() != "" {
-		m.session.Start(time.Now())
+		m.session.Start(now)
+		m.remaining = m.totalDuration
+		m.deadline = now.Add(m.totalDuration)
+		if tick := m.scheduleTick(); tick != nil {
+			cmds = append(cmds, tick)
+		}
 	}
 
-	// check if completed (capture finish time & wpm only once)
-	if !m.session.Finished() && m.currentText.Value() == m.Target {
-		m.session.Finish(time.Now(), m.Target)
-	}
+	m.ensureTargetBuffer()
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 // View defines UI rendering
@@ -139,12 +201,16 @@ func (m Model) View() string {
 			ViewportWidth: m.viewportWidth,
 		}),
 		typing.RenderStats(typing.StatsConfig{
-			Target:  m.Target,
-			Typed:   typed,
-			Width:   metrics.OuterWidth,
-			Styles:  m.styles,
-			Session: &m.session,
-			Now:     now,
+			Target:        m.Target,
+			Typed:         typed,
+			Width:         metrics.OuterWidth,
+			Styles:        m.styles,
+			Session:       &m.session,
+			Now:           now,
+			ProgressLabel: "Words",
+			ProgressValue: fmt.Sprintf("%d", typing.WordCount(typed)),
+			TimeLabel:     "Time Left",
+			TimeValue:     typing.FormatDuration(m.displayRemaining()),
 		}),
 	}
 
@@ -176,4 +242,49 @@ func (m Model) renderSubtitle(width int) string {
 	chars := utf8.RuneCountInString(m.Target)
 	info := fmt.Sprintf("Language: %s · duration: %d · %d chars", languageName, m.duration, chars)
 	return m.styles.Subtitle.MaxWidth(width).Render(info)
+}
+
+func (m Model) ensureTargetBuffer() {
+	if m.languageWords.Words == nil || len(m.languageWords.Words) == 0 {
+		return
+	}
+
+	typed := m.currentText.Value()
+	remainingRunes := utf8.RuneCountInString(m.Target) - utf8.RuneCountInString(typed)
+	if remainingRunes > minRemainingRunes {
+		return
+	}
+
+	additional := generateWordString(m.rng, m.languageWords, wordBufferChunk)
+	if additional == "" {
+		return
+	}
+
+	if strings.TrimSpace(m.Target) == "" {
+		m.Target = additional
+	} else {
+		m.Target = strings.TrimSpace(m.Target + " " + additional)
+	}
+	if !m.session.Started() {
+		m.currentText.Placeholder = m.Target
+	}
+}
+
+func (m Model) scheduleTick() tea.Cmd {
+	if m.tickInterval <= 0 {
+		return nil
+	}
+	return tea.Tick(m.tickInterval, func(t time.Time) tea.Msg {
+		return tickMsg{now: t}
+	})
+}
+
+func (m Model) displayRemaining() time.Duration {
+	if !m.session.Started() {
+		return m.totalDuration
+	}
+	if m.remaining <= 0 {
+		return 0
+	}
+	return m.remaining
 }

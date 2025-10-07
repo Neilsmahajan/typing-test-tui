@@ -34,6 +34,9 @@ type StatsConfig struct {
 	ProgressLabel string
 	WPMLabel      string
 	TimeLabel     string
+	ProgressValue string
+	WPMValue      string
+	TimeValue     string
 }
 
 type CompletionConfig struct {
@@ -151,6 +154,10 @@ func RenderStats(cfg StatsConfig) string {
 		progress = fmt.Sprintf("%s (%d%%)", progress, percent)
 	}
 
+	if cfg.ProgressValue != "" {
+		progress = cfg.ProgressValue
+	}
+
 	progressLabel := cfg.ProgressLabel
 	if progressLabel == "" {
 		progressLabel = "Progress"
@@ -165,11 +172,16 @@ func RenderStats(cfg StatsConfig) string {
 	}
 
 	wpmValue := "--"
-	if wpm := cfg.Session.CurrentWPM(now, cfg.Typed); wpm > 0 {
+	if cfg.WPMValue != "" {
+		wpmValue = cfg.WPMValue
+	} else if wpm := cfg.Session.CurrentWPM(now, cfg.Typed); wpm > 0 {
 		wpmValue = fmt.Sprintf("%.1f", wpm)
 	}
 
 	elapsedValue := FormatDuration(cfg.Session.Elapsed(now))
+	if cfg.TimeValue != "" {
+		elapsedValue = cfg.TimeValue
+	}
 
 	statEntries := []string{
 		renderStatBlock(cfg.Styles, progressLabel, progress),
