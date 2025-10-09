@@ -250,7 +250,7 @@ func (m Model) renderSubtitle(width int) string {
 }
 
 func (m Model) ensureTargetBuffer() {
-	if m.languageWords.Words == nil || len(m.languageWords.Words) == 0 {
+	if len(m.languageWords.Words) == 0 {
 		return
 	}
 
