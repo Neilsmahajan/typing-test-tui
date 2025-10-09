@@ -36,7 +36,7 @@ func DefaultStyles() Styles {
 		StatLabel:     lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Bold(true),
 		StatValue:     lipgloss.NewStyle().Foreground(lipgloss.Color("212")).Bold(true),
 		StatSeparator: separator,
-		Success:       lipgloss.NewStyle().Foreground(lipgloss.Color("120")).Bold(true).MarginTop(1),
+		Success:       lipgloss.NewStyle().Foreground(lipgloss.Color("42")).Bold(true).MarginTop(1),
 		Typed:         lipgloss.NewStyle().Foreground(lipgloss.Color("42")),
 		Incorrect:     lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Underline(true),
 		Remaining:     lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
