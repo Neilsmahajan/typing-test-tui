@@ -57,13 +57,13 @@ func runTypingTest(cmd *cobra.Command, _ []string) {
 		return
 	}
 
-	punctuation, err := cmd.Flags().GetBool("punctuation")
+	includePunctuation, err := cmd.Flags().GetBool("include-punctuation")
 	if err != nil {
 		fmt.Println("Error reading punctuation flag:", err)
 		return
 	}
 
-	numbers, err := cmd.Flags().GetBool("numbers")
+	includeNumbers, err := cmd.Flags().GetBool("include-numbers")
 	if err != nil {
 		fmt.Println("Error reading numbers flag:", err)
 		return
@@ -83,12 +83,12 @@ func runTypingTest(cmd *cobra.Command, _ []string) {
 	}
 
 	cfg := models.Config{
-		Mode:        modeValue,
-		Language:    normalizedLanguage,
-		Duration:    models.Duration(duration),
-		WordCount:   models.WordCount(wordCount),
-		Punctuation: models.Punctuation(punctuation),
-		Numbers:     models.Numbers(numbers),
+		Mode:               modeValue,
+		Language:           normalizedLanguage,
+		Duration:           models.Duration(duration),
+		WordCount:          models.WordCount(wordCount),
+		IncludePunctuation: includePunctuation,
+		IncludeNumbers:     includeNumbers,
 	}
 
 	if err := app.Run(cfg); err != nil {
@@ -162,6 +162,6 @@ func init() {
 	rootCmd.Flags().StringP("language", "l", "english", "Language for the typing test (e.g., 'english' for English, 'spanish' for Spanish, 'code_go' for Go code)")
 	rootCmd.Flags().IntP("duration", "d", 60, "Duration of the typing test in seconds (only for 'time' mode; options: 15, 30, 60, 120)")
 	rootCmd.Flags().IntP("word-count", "w", 50, "Number of words for the typing test (only for 'words' mode; options: 10, 25, 50, 100)")
-	rootCmd.Flags().BoolP("punctuation", "p", false, "Include punctuation in the typing test (only for 'words' and 'time' modes)")
-	rootCmd.Flags().BoolP("numbers", "n", false, "Include numbers in the typing test (only for 'words' and 'time' modes)")
+	rootCmd.Flags().BoolP("include-punctuation", "p", false, "Include punctuation in the typing test (only for 'words' and 'time' modes)")
+	rootCmd.Flags().BoolP("include-numbers", "n", false, "Include numbers in the typing test (only for 'words' and 'time' modes)")
 }
