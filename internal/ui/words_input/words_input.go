@@ -2,6 +2,7 @@ package words_input
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 	"time"
@@ -32,7 +33,7 @@ type Model struct {
 
 func InitialModel(languageWords models.LanguageWords, wordCount models.WordCount, includePunctuation bool, includeNumbers bool) Model {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	target := generateTargetWords(rng, languageWords, wordCount)
+	target := generateTargetWords(rng, languageWords, wordCount, includeNumbers)
 
 	ti := textarea.New()
 	ti.Placeholder = target
@@ -52,7 +53,22 @@ func InitialModel(languageWords models.LanguageWords, wordCount models.WordCount
 	}
 }
 
-func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, wordCount models.WordCount) string {
+func shouldInsertNumber(rng *rand.Rand) bool {
+	if rng == nil {
+		return false
+	}
+	return rng.Intn(10) == 0 // 10% chance to insert a number
+}
+
+func randomNumberString(rng *rand.Rand, maxLen int) string {
+	if rng == nil || maxLen <= 0 {
+		return ""
+	}
+	length := rng.Intn(maxLen) + 1
+	return fmt.Sprintf("%d", rng.Intn(int(math.Pow10(length))))
+}
+
+func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, wordCount models.WordCount, includeNumbers bool) string {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
@@ -65,6 +81,9 @@ func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, wor
 	for i := 0; i < count; i++ {
 		idx := rng.Intn(len(available))
 		result[i] = available[idx]
+		if includeNumbers && shouldInsertNumber(rng) {
+			result[i] += " " + randomNumberString(rng, 3)
+		}
 	}
 	return strings.Join(result, " ")
 }
@@ -91,7 +110,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyEnter:
 				m.session.Reset()
 				m.currentText.SetValue("")
-				target := generateTargetWords(m.rng, m.languageWords, m.wordCount)
+				target := generateTargetWords(m.rng, m.languageWords, m.wordCount, m.includeNumbers)
 				m.Target = target
 				m.currentText.Placeholder = m.Target
 				metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
