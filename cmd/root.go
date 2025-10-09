@@ -32,7 +32,7 @@ var (
 	allowedWordCountSet = map[int]struct{}{10: {}, 25: {}, 50: {}, 100: {}}
 )
 
-func runTypingTest(cmd *cobra.Command, args []string) {
+func runTypingTest(cmd *cobra.Command, _ []string) {
 	mode, err := cmd.Flags().GetString("mode")
 	if err != nil {
 		fmt.Println("Error reading mode flag:", err)
@@ -57,6 +57,18 @@ func runTypingTest(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	punctuation, err := cmd.Flags().GetBool("punctuation")
+	if err != nil {
+		fmt.Println("Error reading punctuation flag:", err)
+		return
+	}
+
+	numbers, err := cmd.Flags().GetBool("numbers")
+	if err != nil {
+		fmt.Println("Error reading numbers flag:", err)
+		return
+	}
+
 	modeValue := models.Mode(mode)
 
 	if err := validateFlags(modeValue, duration, wordCount); err != nil {
@@ -71,10 +83,12 @@ func runTypingTest(cmd *cobra.Command, args []string) {
 	}
 
 	cfg := models.Config{
-		Mode:      modeValue,
-		Language:  normalizedLanguage,
-		Duration:  models.Duration(duration),
-		WordCount: models.WordCount(wordCount),
+		Mode:        modeValue,
+		Language:    normalizedLanguage,
+		Duration:    models.Duration(duration),
+		WordCount:   models.WordCount(wordCount),
+		Punctuation: models.Punctuation(punctuation),
+		Numbers:     models.Numbers(numbers),
 	}
 
 	if err := app.Run(cfg); err != nil {
@@ -123,7 +137,7 @@ func normalizeLanguage(language string) (models.Language, error) {
 		names[i] = string(lang)
 	}
 
-	return models.Language(""), fmt.Errorf("unsupported language %q. Supported languages: %s", language, strings.Join(names, ", "))
+	return "", fmt.Errorf("unsupported language %q. Supported languages: %s", language, strings.Join(names, ", "))
 }
 
 func joinInts(values []int) string {
@@ -148,4 +162,6 @@ func init() {
 	rootCmd.Flags().StringP("language", "l", "english", "Language for the typing test (e.g., 'english' for English, 'spanish' for Spanish, 'code_go' for Go code)")
 	rootCmd.Flags().IntP("duration", "d", 60, "Duration of the typing test in seconds (only for 'time' mode; options: 15, 30, 60, 120)")
 	rootCmd.Flags().IntP("word-count", "w", 50, "Number of words for the typing test (only for 'words' mode; options: 10, 25, 50, 100)")
+	rootCmd.Flags().BoolP("punctuation", "p", false, "Include punctuation in the typing test (only for 'words' and 'time' modes)")
+	rootCmd.Flags().BoolP("numbers", "n", false, "Include numbers in the typing test (only for 'words' and 'time' modes)")
 }

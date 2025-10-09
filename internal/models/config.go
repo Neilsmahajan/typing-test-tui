@@ -39,11 +39,17 @@ type Duration int
 
 type WordCount int
 
+type Punctuation bool
+
+type Numbers bool
+
 type Config struct {
-	Mode      Mode
-	Language  Language
-	Duration  Duration
-	WordCount WordCount
+	Mode        Mode
+	Language    Language
+	Duration    Duration
+	WordCount   WordCount
+	Punctuation Punctuation
+	Numbers     Numbers
 }
 
 var supportedLanguages = []Language{
