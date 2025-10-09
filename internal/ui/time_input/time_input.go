@@ -19,17 +19,19 @@ type Model struct {
 	// Target text
 	Target string
 	// what user has currentText so far
-	currentText   textarea.Model
-	duration      models.Duration
-	languageWords models.LanguageWords
-	rng           *rand.Rand
-	viewportWidth int
-	styles        theme.Styles
-	session       typing.Session
-	totalDuration time.Duration
-	remaining     time.Duration
-	deadline      time.Time
-	tickInterval  time.Duration
+	currentText        textarea.Model
+	duration           models.Duration
+	languageWords      models.LanguageWords
+	includePunctuation bool
+	includeNumbers     bool
+	rng                *rand.Rand
+	viewportWidth      int
+	styles             theme.Styles
+	session            typing.Session
+	totalDuration      time.Duration
+	remaining          time.Duration
+	deadline           time.Time
+	tickInterval       time.Duration
 }
 
 type tickMsg struct {
@@ -44,7 +46,7 @@ const (
 	defaultTickInterval    = 100 * time.Millisecond
 )
 
-func InitialModel(languageWords models.LanguageWords, duration models.Duration) Model {
+func InitialModel(languageWords models.LanguageWords, duration models.Duration, includePunctuation bool, includeNumbers bool) Model {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	target := generateTargetWords(rng, languageWords, duration)
 	totalDuration := time.Duration(duration) * time.Second
@@ -60,16 +62,18 @@ func InitialModel(languageWords models.LanguageWords, duration models.Duration) 
 	ti.Focus()
 
 	return Model{
-		Target:        target,
-		currentText:   ti,
-		duration:      duration,
-		languageWords: languageWords,
-		rng:           rng,
-		styles:        styles,
-		session:       session,
-		totalDuration: totalDuration,
-		remaining:     totalDuration,
-		tickInterval:  defaultTickInterval,
+		Target:             target,
+		currentText:        ti,
+		duration:           duration,
+		languageWords:      languageWords,
+		includePunctuation: includePunctuation,
+		includeNumbers:     includeNumbers,
+		rng:                rng,
+		styles:             styles,
+		session:            session,
+		totalDuration:      totalDuration,
+		remaining:          totalDuration,
+		tickInterval:       defaultTickInterval,
 	}
 }
 

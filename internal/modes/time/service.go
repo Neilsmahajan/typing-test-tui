@@ -15,7 +15,7 @@ func Run(cfg models.Config) error {
 		return fmt.Errorf("error loading words: %w", err)
 	}
 
-	p := tea.NewProgram(time_input.InitialModel(languageWords, cfg.Duration))
+	p := tea.NewProgram(time_input.InitialModel(languageWords, cfg.Duration, cfg.IncludePunctuation, cfg.IncludeNumbers))
 
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("error running program: %w", err)

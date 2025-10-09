@@ -19,16 +19,18 @@ type Model struct {
 	// Target text
 	Target string
 	// what user has currentText so far
-	currentText   textarea.Model
-	wordCount     models.WordCount
-	languageWords models.LanguageWords
-	rng           *rand.Rand
-	viewportWidth int
-	styles        theme.Styles
-	session       typing.Session
+	currentText        textarea.Model
+	wordCount          models.WordCount
+	languageWords      models.LanguageWords
+	includePunctuation bool
+	includeNumbers     bool
+	rng                *rand.Rand
+	viewportWidth      int
+	styles             theme.Styles
+	session            typing.Session
 }
 
-func InitialModel(languageWords models.LanguageWords, wordCount models.WordCount) Model {
+func InitialModel(languageWords models.LanguageWords, wordCount models.WordCount, includePunctuation bool, includeNumbers bool) Model {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	target := generateTargetWords(rng, languageWords, wordCount)
 
@@ -38,13 +40,15 @@ func InitialModel(languageWords models.LanguageWords, wordCount models.WordCount
 	ti.Focus()
 
 	return Model{
-		Target:        target,
-		currentText:   ti,
-		wordCount:     wordCount,
-		languageWords: languageWords,
-		rng:           rng,
-		styles:        theme.DefaultStyles(),
-		session:       typing.NewSession(),
+		Target:             target,
+		currentText:        ti,
+		wordCount:          wordCount,
+		languageWords:      languageWords,
+		includePunctuation: includePunctuation,
+		includeNumbers:     includeNumbers,
+		rng:                rng,
+		styles:             theme.DefaultStyles(),
+		session:            typing.NewSession(),
 	}
 }
 
