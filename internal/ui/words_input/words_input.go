@@ -2,7 +2,6 @@ package words_input
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"strings"
 	"time"
@@ -53,21 +52,6 @@ func InitialModel(languageWords models.LanguageWords, wordCount models.WordCount
 	}
 }
 
-func shouldInsertNumber(rng *rand.Rand) bool {
-	if rng == nil {
-		return false
-	}
-	return rng.Intn(10) == 0 // 10% chance to insert a number
-}
-
-func randomNumberString(rng *rand.Rand, maxLen int) string {
-	if rng == nil || maxLen <= 0 {
-		return ""
-	}
-	length := rng.Intn(maxLen) + 1
-	return fmt.Sprintf("%d", rng.Intn(int(math.Pow10(length))))
-}
-
 func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, wordCount models.WordCount, includeNumbers bool) string {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -80,9 +64,13 @@ func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, wor
 	result := make([]string, count)
 	for i := 0; i < count; i++ {
 		idx := rng.Intn(len(available))
-		result[i] = available[idx]
-		if includeNumbers && shouldInsertNumber(rng) {
-			result[i] += " " + randomNumberString(rng, 3)
+		word := available[idx]
+
+		// 10% chance to replace the word with a number string
+		if includeNumbers && typing.ShouldInsertNumber(rng) {
+			result[i] = typing.RandomNumberString(rng, 4)
+		} else {
+			result[i] = word
 		}
 	}
 	return strings.Join(result, " ")

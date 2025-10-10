@@ -48,7 +48,7 @@ const (
 
 func InitialModel(languageWords models.LanguageWords, duration models.Duration, includePunctuation bool, includeNumbers bool) Model {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	target := generateTargetWords(rng, languageWords, duration)
+	target := generateTargetWords(rng, languageWords, duration, includeNumbers)
 	totalDuration := time.Duration(duration) * time.Second
 	if totalDuration <= 0 {
 		totalDuration = 60 * time.Second
@@ -77,12 +77,12 @@ func InitialModel(languageWords models.LanguageWords, duration models.Duration, 
 	}
 }
 
-func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, duration models.Duration) string {
+func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, duration models.Duration, includeNumbers bool) string {
 	wordCount := estimateInitialWordCount(duration)
-	return generateWordString(rng, languageWords, wordCount)
+	return generateWordString(rng, languageWords, wordCount, includeNumbers)
 }
 
-func generateWordString(rng *rand.Rand, languageWords models.LanguageWords, count int) string {
+func generateWordString(rng *rand.Rand, languageWords models.LanguageWords, count int, includeNumbers bool) string {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
@@ -93,7 +93,14 @@ func generateWordString(rng *rand.Rand, languageWords models.LanguageWords, coun
 	result := make([]string, count)
 	for i := 0; i < count; i++ {
 		idx := rng.Intn(len(available))
-		result[i] = available[idx]
+		word := available[idx]
+
+		// 10% chance to replace the word with a number string
+		if includeNumbers && typing.ShouldInsertNumber(rng) {
+			result[i] = typing.RandomNumberString(rng, 4)
+		} else {
+			result[i] = word
+		}
 	}
 	return strings.Join(result, " ")
 }
@@ -143,7 +150,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyEnter:
 				m.session.Reset()
 				m.currentText.SetValue("")
-				target := generateTargetWords(m.rng, m.languageWords, m.duration)
+				target := generateTargetWords(m.rng, m.languageWords, m.duration, m.includeNumbers)
 				m.Target = target
 				m.currentText.Placeholder = m.Target
 				metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
@@ -264,7 +271,7 @@ func (m Model) ensureTargetBuffer() {
 		return
 	}
 
-	additional := generateWordString(m.rng, m.languageWords, wordBufferChunk)
+	additional := generateWordString(m.rng, m.languageWords, wordBufferChunk, m.includeNumbers)
 	if additional == "" {
 		return
 	}
