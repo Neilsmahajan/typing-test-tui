@@ -19,12 +19,13 @@ type Model struct {
 	// Target text
 	Target string
 	// what user has currentText so far
-	currentText    textarea.Model
-	languageQuotes models.LanguageQuotes
-	rng            *rand.Rand
-	viewportWidth  int
-	styles         theme.Styles
-	session        typing.Session
+	currentText      textarea.Model
+	languageQuotes   models.LanguageQuotes
+	rng              *rand.Rand
+	viewportWidth    int
+	styles           theme.Styles
+	session          typing.Session
+	newlineIndicator string
 }
 
 func InitialModel(languageQuotes models.LanguageQuotes) Model {
@@ -32,6 +33,10 @@ func InitialModel(languageQuotes models.LanguageQuotes) Model {
 	quote := randomQuote(languageQuotes, rng)
 	styles := theme.DefaultStyles()
 	session := typing.NewSession()
+	indicator := ""
+	if strings.HasPrefix(string(languageQuotes.Language), "code_") {
+		indicator = typing.DefaultNewlineIndicator
+	}
 
 	ti := textarea.New()
 	ti.Placeholder = quote.Text
@@ -39,12 +44,13 @@ func InitialModel(languageQuotes models.LanguageQuotes) Model {
 	ti.Focus()
 
 	return Model{
-		Target:         quote.Text,
-		currentText:    ti,
-		languageQuotes: languageQuotes,
-		rng:            rng,
-		styles:         styles,
-		session:        session,
+		Target:           quote.Text,
+		currentText:      ti,
+		languageQuotes:   languageQuotes,
+		rng:              rng,
+		styles:           styles,
+		session:          session,
+		newlineIndicator: indicator,
 	}
 }
 
@@ -152,12 +158,13 @@ func (m Model) View() string {
 		m.renderHeader(metrics.OuterWidth),
 		m.renderSubtitle(metrics.OuterWidth),
 		typing.RenderBox(typing.BoxConfig{
-			Target:        m.Target,
-			Typed:         typed,
-			Styles:        m.styles,
-			Session:       &m.session,
-			Metrics:       metrics,
-			ViewportWidth: m.viewportWidth,
+			Target:           m.Target,
+			Typed:            typed,
+			Styles:           m.styles,
+			Session:          &m.session,
+			Metrics:          metrics,
+			ViewportWidth:    m.viewportWidth,
+			NewlineIndicator: m.newlineIndicator,
 		}),
 		typing.RenderStats(typing.StatsConfig{
 			Target:  m.Target,

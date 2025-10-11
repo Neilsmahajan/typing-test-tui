@@ -3,6 +3,7 @@ package typing
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/neilsmahajan/typing-test-tui/internal/ui/theme"
 )
@@ -16,6 +17,16 @@ func TestRenderInlinePreservesContent(t *testing.T) {
 	}
 }
 
+func TestRenderInlineWithIndicator(t *testing.T) {
+	styles := theme.DefaultStyles()
+	input := "fmt.Println(\"hi\")\nreturn"
+	styled := renderInlineWithIndicator(styles.Typed, input, DefaultNewlineIndicator)
+	expected := "fmt.Println(\"hi\")" + DefaultNewlineIndicator + "\nreturn"
+	if cleaned := sanitizeANSI(styled); cleaned != expected {
+		t.Fatalf("expected sanitized inline render with indicator to equal %q, got %q", expected, cleaned)
+	}
+}
+
 func TestRenderBoxCursorAlignment(t *testing.T) {
 	styles := theme.DefaultStyles()
 	target := "package main\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Hello\")\n}"
@@ -24,12 +35,13 @@ func TestRenderBoxCursorAlignment(t *testing.T) {
 	session := NewSession()
 
 	output := RenderBox(BoxConfig{
-		Target:        target,
-		Typed:         typed,
-		Styles:        styles,
-		Session:       &session,
-		Metrics:       metrics,
-		ViewportWidth: 0,
+		Target:           target,
+		Typed:            typed,
+		Styles:           styles,
+		Session:          &session,
+		Metrics:          metrics,
+		ViewportWidth:    0,
+		NewlineIndicator: DefaultNewlineIndicator,
 	})
 
 	cleaned := sanitizeANSI(output)
@@ -49,6 +61,31 @@ func TestRenderBoxCursorAlignment(t *testing.T) {
 	const expectedPrefix = "│  import"
 	if !strings.HasPrefix(importLine, expectedPrefix) {
 		t.Fatalf("expected import line to start with %q, got %q", expectedPrefix, importLine)
+	}
+}
+
+func TestRenderBoxDisplaysNewlineIndicator(t *testing.T) {
+	styles := theme.DefaultStyles()
+	target := "line1\nline2"
+	typed := "line1\n"
+	metrics := ComputeBoxMetrics(target, styles, 0)
+	session := NewSession()
+	session.Start(time.Now().Add(-time.Second))
+	session.Finish(time.Now(), target)
+
+	output := RenderBox(BoxConfig{
+		Target:           target,
+		Typed:            typed,
+		Styles:           styles,
+		Session:          &session,
+		Metrics:          metrics,
+		ViewportWidth:    0,
+		NewlineIndicator: DefaultNewlineIndicator,
+	})
+
+	cleaned := sanitizeANSI(output)
+	if !strings.Contains(cleaned, DefaultNewlineIndicator) {
+		t.Fatalf("expected rendered output to contain newline indicator %q, got:\n%s", DefaultNewlineIndicator, cleaned)
 	}
 }
 

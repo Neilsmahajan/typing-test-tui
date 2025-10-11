@@ -17,12 +17,13 @@ type BoxMetrics struct {
 }
 
 type BoxConfig struct {
-	Target        string
-	Typed         string
-	Styles        theme.Styles
-	Session       *Session
-	Metrics       BoxMetrics
-	ViewportWidth int
+	Target           string
+	Typed            string
+	Styles           theme.Styles
+	Session          *Session
+	Metrics          BoxMetrics
+	ViewportWidth    int
+	NewlineIndicator string
 }
 
 type StatsConfig struct {
@@ -55,6 +56,7 @@ type InstructionsConfig struct {
 }
 
 const DefaultInstructionsMessage = "Esc: blur focus • Tab: finish test • Ctrl+C: exit"
+const DefaultNewlineIndicator = "↵"
 
 func ComputeBoxMetrics(target string, styles theme.Styles, viewportWidth int) BoxMetrics {
 	frame := styles.QuoteBox.GetHorizontalFrameSize()
@@ -74,6 +76,8 @@ func RenderBox(cfg BoxConfig) string {
 	if metrics.OuterWidth == 0 || metrics.ContentWidth == 0 {
 		metrics = ComputeBoxMetrics(cfg.Target, cfg.Styles, cfg.ViewportWidth)
 	}
+
+	indicator := cfg.NewlineIndicator
 
 	target := cfg.Target
 	typed := cfg.Typed
@@ -98,12 +102,12 @@ func RenderBox(cfg BoxConfig) string {
 		incorrectSegment = target[incorrectIndex:limit]
 	}
 
-	complete := renderInline(cfg.Styles.Typed, correctSegment) + renderInline(cfg.Styles.Incorrect, MakeSpacesVisible(incorrectSegment))
+	complete := renderInlineWithIndicator(cfg.Styles.Typed, correctSegment, indicator) + renderInlineWithIndicator(cfg.Styles.Incorrect, MakeSpacesVisible(incorrectSegment), indicator)
 
 	if typedLen > targetLen {
 		extra := typed[targetLen:]
 		if extra != "" {
-			complete += renderInline(cfg.Styles.Incorrect, MakeSpacesVisible(extra))
+			complete += renderInlineWithIndicator(cfg.Styles.Incorrect, MakeSpacesVisible(extra), indicator)
 		}
 	}
 
@@ -121,6 +125,9 @@ func RenderBox(cfg BoxConfig) string {
 					cursorGlyph = remainingAfterCursor[:size]
 				} else {
 					cursorGlyph = string(r)
+					if r == '\n' && indicator != "" {
+						cursorGlyph = indicator + "\n"
+					}
 				}
 				remainingAfterCursor = remainingAfterCursor[size:]
 			}
@@ -128,7 +135,7 @@ func RenderBox(cfg BoxConfig) string {
 		complete += cfg.Styles.Cursor.Render(cursorGlyph)
 	}
 
-	complete += renderInline(cfg.Styles.Remaining, remainingAfterCursor)
+	complete += renderInlineWithIndicator(cfg.Styles.Remaining, remainingAfterCursor, indicator)
 	innerWidth := metrics.ContentWidth
 	wrapped := cfg.Styles.QuoteContent.Width(innerWidth).Render(complete)
 	return cfg.Styles.QuoteBox.Width(metrics.OuterWidth).Render(wrapped)
@@ -263,21 +270,34 @@ func renderStatBlock(styles theme.Styles, label, value string) string {
 	return styles.StatBlock.Render(block)
 }
 
-func renderInline(style lipgloss.Style, text string) string {
+func renderInlineWithIndicator(style lipgloss.Style, text, indicator string) string {
 	if text == "" {
 		return ""
 	}
 
-	lines := strings.Split(text, "\n")
-	styled := make([]string, len(lines))
-	for i, line := range lines {
-		styled[i] = style.Render(line)
+	chunks := strings.SplitAfter(text, "\n")
+	var builder strings.Builder
+	for _, chunk := range chunks {
+		if chunk == "" {
+			continue
+		}
+		hasNewline := strings.HasSuffix(chunk, "\n")
+		content := chunk
+		if hasNewline {
+			content = chunk[:len(chunk)-1]
+		}
+		if hasNewline && indicator != "" {
+			content += indicator
+		}
+		builder.WriteString(style.Render(content))
+		if hasNewline {
+			builder.WriteString("\n")
+		}
 	}
 
-	result := strings.Join(styled, "\n")
-	if strings.HasSuffix(text, "\n") && !strings.HasSuffix(result, "\n") {
-		result += "\n"
-	}
+	return builder.String()
+}
 
-	return result
+func renderInline(style lipgloss.Style, text string) string {
+	return renderInlineWithIndicator(style, text, "")
 }
