@@ -71,7 +71,7 @@ func runTypingTest(cmd *cobra.Command, _ []string) {
 
 	modeValue := models.Mode(mode)
 
-	if err := validateFlags(modeValue, duration, wordCount); err != nil {
+	if err := validateFlags(modeValue, duration, wordCount, includePunctuation, includeNumbers); err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
@@ -96,7 +96,7 @@ func runTypingTest(cmd *cobra.Command, _ []string) {
 	}
 }
 
-func validateFlags(mode models.Mode, duration int, wordCount int) error {
+func validateFlags(mode models.Mode, duration int, wordCount int, includePunctuation bool, includeNumbers bool) error {
 	switch mode {
 	case models.QuoteMode:
 		if duration != defaultDuration {
@@ -104,6 +104,12 @@ func validateFlags(mode models.Mode, duration int, wordCount int) error {
 		}
 		if wordCount != defaultWordCount {
 			return fmt.Errorf("word-count flag is only available for words mode")
+		}
+		if includePunctuation {
+			return fmt.Errorf("include-punctuation flag is only available for words and time modes")
+		}
+		if includeNumbers {
+			return fmt.Errorf("include-numbers flag is only available for words and time modes")
 		}
 	case models.WordsMode:
 		if duration != defaultDuration {
