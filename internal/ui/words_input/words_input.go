@@ -32,7 +32,7 @@ type Model struct {
 
 func InitialModel(languageWords models.LanguageWords, wordCount models.WordCount, includePunctuation bool, includeNumbers bool) Model {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	target := generateTargetWords(rng, languageWords, wordCount, includeNumbers)
+	target := generateTargetWords(rng, languageWords, wordCount, includeNumbers, includePunctuation)
 
 	ti := textarea.New()
 	ti.Placeholder = target
@@ -52,7 +52,7 @@ func InitialModel(languageWords models.LanguageWords, wordCount models.WordCount
 	}
 }
 
-func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, wordCount models.WordCount, includeNumbers bool) string {
+func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, wordCount models.WordCount, includeNumbers bool, includePunctuation bool) string {
 	if rng == nil {
 		rng = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
@@ -68,10 +68,19 @@ func generateTargetWords(rng *rand.Rand, languageWords models.LanguageWords, wor
 
 		// 10% chance to replace the word with a number string
 		if includeNumbers && typing.ShouldInsertNumber(rng) {
-			result[i] = typing.RandomNumberString(rng, 4)
-		} else {
-			result[i] = word
+			word = typing.RandomNumberString(rng, 4)
 		}
+
+		// Apply punctuation if enabled
+		if includePunctuation {
+			previousWord := ""
+			if i > 0 {
+				previousWord = result[i-1]
+			}
+			word = typing.PunctuateWord(rng, languageWords.Language, previousWord, word, i, count)
+		}
+
+		result[i] = word
 	}
 	return strings.Join(result, " ")
 }
@@ -98,7 +107,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyEnter:
 				m.session.Reset()
 				m.currentText.SetValue("")
-				target := generateTargetWords(m.rng, m.languageWords, m.wordCount, m.includeNumbers)
+				target := generateTargetWords(m.rng, m.languageWords, m.wordCount, m.includeNumbers, m.includePunctuation)
 				m.Target = target
 				m.currentText.Placeholder = m.Target
 				metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
