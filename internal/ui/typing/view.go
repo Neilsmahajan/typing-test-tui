@@ -3,6 +3,7 @@ package typing
 import (
 	"fmt"
 	"math"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -97,12 +98,12 @@ func RenderBox(cfg BoxConfig) string {
 		incorrectSegment = target[incorrectIndex:limit]
 	}
 
-	complete := cfg.Styles.Typed.Render(correctSegment) + cfg.Styles.Incorrect.Render(MakeSpacesVisible(incorrectSegment))
+	complete := renderInline(cfg.Styles.Typed, correctSegment) + renderInline(cfg.Styles.Incorrect, MakeSpacesVisible(incorrectSegment))
 
 	if typedLen > targetLen {
 		extra := typed[targetLen:]
 		if extra != "" {
-			complete += cfg.Styles.Incorrect.Render(MakeSpacesVisible(extra))
+			complete += renderInline(cfg.Styles.Incorrect, MakeSpacesVisible(extra))
 		}
 	}
 
@@ -127,7 +128,7 @@ func RenderBox(cfg BoxConfig) string {
 		complete += cfg.Styles.Cursor.Render(cursorGlyph)
 	}
 
-	complete += cfg.Styles.Remaining.Render(remainingAfterCursor)
+	complete += renderInline(cfg.Styles.Remaining, remainingAfterCursor)
 	innerWidth := metrics.ContentWidth
 	wrapped := cfg.Styles.QuoteContent.Width(innerWidth).Render(complete)
 	return cfg.Styles.QuoteBox.Width(metrics.OuterWidth).Render(wrapped)
@@ -260,4 +261,23 @@ func renderStatBlock(styles theme.Styles, label, value string) string {
 		styles.StatValue.Render(value),
 	)
 	return styles.StatBlock.Render(block)
+}
+
+func renderInline(style lipgloss.Style, text string) string {
+	if text == "" {
+		return ""
+	}
+
+	lines := strings.Split(text, "\n")
+	styled := make([]string, len(lines))
+	for i, line := range lines {
+		styled[i] = style.Render(line)
+	}
+
+	result := strings.Join(styled, "\n")
+	if strings.HasSuffix(text, "\n") && !strings.HasSuffix(result, "\n") {
+		result += "\n"
+	}
+
+	return result
 }
