@@ -57,7 +57,7 @@ const DefaultInstructionsMessage = "Esc: blur focus • Tab: finish test • Ctr
 
 func ComputeBoxMetrics(target string, styles theme.Styles, viewportWidth int) BoxMetrics {
 	frame := styles.QuoteBox.GetHorizontalFrameSize()
-	outer := computeOuterWidth(target, styles, viewportWidth, frame)
+	outer := computeOuterWidth(target, viewportWidth, frame)
 	inner := outer - frame
 	if inner < 1 {
 		inner = 1
@@ -230,7 +230,7 @@ func RenderInstructions(cfg InstructionsConfig) string {
 	return cfg.Styles.Instruction.MaxWidth(cfg.Width).Render(message)
 }
 
-func computeOuterWidth(target string, styles theme.Styles, viewportWidth int, frame int) int {
+func computeOuterWidth(target string, viewportWidth int, frame int) int {
 	minOuter := frame + 1
 
 	if viewportWidth > 0 {
