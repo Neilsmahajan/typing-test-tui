@@ -78,6 +78,7 @@ func RenderBox(cfg BoxConfig) string {
 	}
 
 	indicator := cfg.NewlineIndicator
+	skipIndicatorAfterCursor := false
 
 	target := cfg.Target
 	typed := cfg.Typed
@@ -123,19 +124,20 @@ func RenderBox(cfg BoxConfig) string {
 			if size > 0 {
 				if r == utf8.RuneError {
 					cursorGlyph = remainingAfterCursor[:size]
+					remainingAfterCursor = remainingAfterCursor[size:]
+				} else if r == '\n' && indicator != "" {
+					cursorGlyph = indicator
+					skipIndicatorAfterCursor = true
 				} else {
 					cursorGlyph = string(r)
-					if r == '\n' && indicator != "" {
-						cursorGlyph = indicator + "\n"
-					}
+					remainingAfterCursor = remainingAfterCursor[size:]
 				}
-				remainingAfterCursor = remainingAfterCursor[size:]
 			}
 		}
 		complete += cfg.Styles.Cursor.Render(cursorGlyph)
 	}
 
-	complete += renderInlineWithIndicator(cfg.Styles.Remaining, remainingAfterCursor, indicator)
+	complete += renderInlineWithIndicatorSkip(cfg.Styles.Remaining, remainingAfterCursor, indicator, skipIndicatorAfterCursor)
 	innerWidth := metrics.ContentWidth
 	wrapped := cfg.Styles.QuoteContent.Width(innerWidth).Render(complete)
 	return cfg.Styles.QuoteBox.Width(metrics.OuterWidth).Render(wrapped)
@@ -271,12 +273,17 @@ func renderStatBlock(styles theme.Styles, label, value string) string {
 }
 
 func renderInlineWithIndicator(style lipgloss.Style, text, indicator string) string {
+	return renderInlineWithIndicatorSkip(style, text, indicator, false)
+}
+
+func renderInlineWithIndicatorSkip(style lipgloss.Style, text, indicator string, skipFirst bool) string {
 	if text == "" {
 		return ""
 	}
 
 	chunks := strings.SplitAfter(text, "\n")
 	var builder strings.Builder
+	skip := skipFirst
 	for _, chunk := range chunks {
 		if chunk == "" {
 			continue
@@ -287,7 +294,11 @@ func renderInlineWithIndicator(style lipgloss.Style, text, indicator string) str
 			content = chunk[:len(chunk)-1]
 		}
 		if hasNewline && indicator != "" {
-			content += indicator
+			if skip {
+				skip = false
+			} else {
+				content += indicator
+			}
 		}
 		builder.WriteString(style.Render(content))
 		if hasNewline {

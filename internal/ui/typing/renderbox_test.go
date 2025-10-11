@@ -27,6 +27,16 @@ func TestRenderInlineWithIndicator(t *testing.T) {
 	}
 }
 
+func TestRenderInlineWithIndicatorSkipFirst(t *testing.T) {
+	styles := theme.DefaultStyles()
+	input := "\nnext"
+	styled := renderInlineWithIndicatorSkip(styles.Remaining, input, DefaultNewlineIndicator, true)
+	expected := "\nnext"
+	if cleaned := sanitizeANSI(styled); cleaned != expected {
+		t.Fatalf("expected sanitized inline render with skipped indicator to equal %q, got %q", expected, cleaned)
+	}
+}
+
 func TestRenderBoxCursorAlignment(t *testing.T) {
 	styles := theme.DefaultStyles()
 	target := "package main\nimport \"fmt\"\n\nfunc main() {\n\tfmt.Println(\"Hello\")\n}"
@@ -86,6 +96,30 @@ func TestRenderBoxDisplaysNewlineIndicator(t *testing.T) {
 	cleaned := sanitizeANSI(output)
 	if !strings.Contains(cleaned, DefaultNewlineIndicator) {
 		t.Fatalf("expected rendered output to contain newline indicator %q, got:\n%s", DefaultNewlineIndicator, cleaned)
+	}
+}
+
+func TestRenderBoxCursorNewlineIndicatorOnce(t *testing.T) {
+	styles := theme.DefaultStyles()
+	target := "line1\nline2"
+	typed := "line1"
+	metrics := ComputeBoxMetrics(target, styles, 0)
+	session := NewSession()
+
+	output := RenderBox(BoxConfig{
+		Target:           target,
+		Typed:            typed,
+		Styles:           styles,
+		Session:          &session,
+		Metrics:          metrics,
+		ViewportWidth:    0,
+		NewlineIndicator: DefaultNewlineIndicator,
+	})
+
+	cleaned := sanitizeANSI(output)
+	count := strings.Count(cleaned, DefaultNewlineIndicator)
+	if count != 1 {
+		t.Fatalf("expected exactly one newline indicator, found %d in output:\n%s", count, cleaned)
 	}
 }
 
