@@ -53,7 +53,7 @@ type InstructionsConfig struct {
 	Message string
 }
 
-const DefaultInstructionsMessage = "Esc: blur focus • Ctrl+C: exit"
+const DefaultInstructionsMessage = "Esc: blur focus • Tab: finish test • Ctrl+C: exit"
 
 func ComputeBoxMetrics(target string, styles theme.Styles, viewportWidth int) BoxMetrics {
 	frame := styles.QuoteBox.GetHorizontalFrameSize()
@@ -211,7 +211,7 @@ func RenderCompletion(cfg CompletionConfig) string {
 	summary := fmt.Sprintf("✅ Completed in %s · WPM %.2f", FormatDuration(duration), cfg.Session.WPM())
 	prompt := cfg.Prompt
 	if prompt == "" {
-		prompt = "Press any key to continue or Ctrl+C to exit."
+		prompt = "Press enter to continue, or Ctrl+C to exit."
 	}
 
 	lines := []string{

@@ -177,6 +177,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case tea.KeyCtrlC:
 			return m, tea.Quit
+		case tea.KeyTab:
+			if !m.session.Finished() {
+				m.session.Finish(time.Now(), m.currentText.Value())
+			}
+			return m, nil
 		}
 	case error:
 		return m, nil
