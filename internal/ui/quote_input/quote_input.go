@@ -3,6 +3,7 @@ package quote_input
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -63,6 +64,7 @@ func (m Model) Init() tea.Cmd {
 // Update handles messages (key presses, etc.)
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	prevValue := m.currentText.Value()
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -105,12 +107,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	m.currentText, cmd = m.currentText.Update(msg)
 
-	if !m.session.Started() && m.currentText.Value() != "" {
+	if keyMsg, ok := msg.(tea.KeyMsg); ok && keyMsg.Type == tea.KeyEnter && !m.session.Finished() {
+		prevNormalized := normalizeTypedValue(prevValue, m.Target)
+		currentNormalized := normalizeTypedValue(m.currentText.Value(), m.Target)
+
+		if len([]rune(currentNormalized)) > len([]rune(prevNormalized)) {
+			targetRunes := []rune(m.Target)
+			currentRunes := []rune(currentNormalized)
+			if prefixMatches(targetRunes, currentRunes) {
+				if indent := indentAfter(targetRunes, len(currentRunes)); indent != "" {
+					m.currentText.InsertString(indent)
+				}
+			}
+		}
+
+	}
+
+	typedNormalized := normalizeTypedValue(m.currentText.Value(), m.Target)
+
+	if !m.session.Started() && typedNormalized != "" {
 		m.session.Start(time.Now())
 	}
 
 	// check if completed (capture finish time & wpm only once)
-	if !m.session.Finished() && m.currentText.Value() == m.Target {
+	if !m.session.Finished() && typedNormalized == m.Target {
 		m.session.Finish(time.Now(), m.Target)
 	}
 
@@ -119,7 +139,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View defines UI rendering
 func (m Model) View() string {
-	typed := m.currentText.Value()
+	typed := normalizeTypedValue(m.currentText.Value(), m.Target)
 	metrics := typing.ComputeBoxMetrics(m.Target, m.styles, m.viewportWidth)
 	now := time.Now()
 
@@ -173,4 +193,81 @@ func (m Model) renderSubtitle(width int) string {
 	chars := utf8.RuneCountInString(m.Target)
 	info := fmt.Sprintf("Language: %s · %d words · %d chars", languageName, words, chars)
 	return m.styles.Subtitle.MaxWidth(width).Render(info)
+}
+
+func normalizeTypedValue(typed, target string) string {
+	typedRunes := []rune(typed)
+	targetRunes := []rune(target)
+
+	result := make([]rune, 0, len(typedRunes))
+	ti, to := 0, 0
+
+	for ti < len(typedRunes) && to < len(targetRunes) {
+		currentTyped := typedRunes[ti]
+		currentTarget := targetRunes[to]
+
+		if currentTarget == '\t' {
+			if currentTyped == '\t' {
+				result = append(result, '\t')
+				ti++
+			} else {
+				spaces := 0
+				for j := ti; j < len(typedRunes) && typedRunes[j] == ' '; j++ {
+					spaces++
+					if spaces == 4 {
+						break
+					}
+				}
+				if spaces == 4 {
+					result = append(result, '\t')
+					ti += spaces
+				} else {
+					result = append(result, currentTyped)
+					ti++
+				}
+			}
+			to++
+			continue
+		}
+
+		result = append(result, currentTyped)
+		ti++
+		to++
+	}
+
+	for ; ti < len(typedRunes); ti++ {
+		result = append(result, typedRunes[ti])
+	}
+
+	return string(result)
+}
+
+func prefixMatches(target, typed []rune) bool {
+	if len(typed) > len(target) {
+		return false
+	}
+	for i := range typed {
+		if target[i] != typed[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func indentAfter(target []rune, position int) string {
+	if position < 0 || position >= len(target) {
+		return ""
+	}
+
+	var builder strings.Builder
+	for i := position; i < len(target); i++ {
+		r := target[i]
+		if r == ' ' || r == '\t' {
+			builder.WriteRune(r)
+			continue
+		}
+		break
+	}
+
+	return builder.String()
 }
