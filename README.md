@@ -1,10 +1,10 @@
-# typing-test-tui
+# Typing Test TUI
 
 [![CI](https://github.com/Neilsmahajan/typing-test-tui/actions/workflows/ci.yml/badge.svg)](https://github.com/Neilsmahajan/typing-test-tui/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/neilsmahajan/typing-test-tui.svg)](https://pkg.go.dev/github.com/neilsmahajan/typing-test-tui)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-`typing-test-tui` is a terminal-native typing trainer built in Go with [Cobra](https://github.com/spf13/cobra), [Bubble Tea](https://github.com/charmbracelet/bubbletea), and [Lip Gloss](https://github.com/charmbracelet/lipgloss). It ships with multiple practice modes, curated word lists in several natural languages, and code snippets across popular programming languages. Whether you want to benchmark your WPM or practice typing syntax-heavy snippets, this TUI keeps you focused on your keyboard.
+Typing Test TUI is a terminal-native typing trainer built in Go with [Cobra](https://github.com/spf13/cobra), [Bubble Tea](https://github.com/charmbracelet/bubbletea), and [Lip Gloss](https://github.com/charmbracelet/lipgloss). It ships with multiple practice modes, curated word lists in several natural languages, and code snippets across popular programming languages. Whether you want to benchmark your WPM or practice typing syntax-heavy snippets, this TUI keeps you focused on your keyboard.
 
 Built and maintained by **Neil Mahajan** (<neilsmahajan@gmail.com> · [links.neilsmahajan.com](https://links.neilsmahajan.com/)).
 
